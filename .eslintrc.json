@@ -13,6 +13,7 @@
 		"no-console": "off",
 		"no-tabs": "off",
 		"indent": ["warn", "tab"],
-		"comma-dangle": "off"
+		"comma-dangle": "off",
+		"func-names": ["warn", "never"]
 	}
 }

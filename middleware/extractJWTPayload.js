@@ -26,7 +26,7 @@ async function extractJWTPayload(ctx, next) {
 		return;
 	}
 
-	next();
+	await next();
 }
 
 module.exports = extractJWTPayload;

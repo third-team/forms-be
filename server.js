@@ -4,8 +4,11 @@ const koaCors = require('@koa/cors');
 require('dotenv').config();
 const { router, protectedRouter } = require('./api/routes/routes');
 const extractJWTPayload = require('./middleware/extractJWTPayload');
+const connectMongoDB = require('./mongoDBConnect');
 
 const PORT = process.env.PORT || 3000;
+
+connectMongoDB();
 
 const app = new Koa();
 
