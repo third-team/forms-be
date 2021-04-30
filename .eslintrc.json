@@ -14,6 +14,10 @@
 		"no-tabs": "off",
 		"indent": ["warn", "tab"],
 		"comma-dangle": "off",
-		"func-names": ["warn", "never"]
+		"func-names": ["warn", "never"],
+		"no-underscore-dangle": "off",
+		"no-param-reassign": "off",
+		"no-plusplus": "off",
+		"operator-linebreak": ["warn", "after"]
 	}
 }
