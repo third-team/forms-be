@@ -21,7 +21,7 @@ async function extractJWTPayload(ctx, next) {
 			return;
 		}
 	} else {
-		ctx.status = 403;
+		ctx.status = 401;
 		ctx.body = { message: 'Token not provided!' };
 		return;
 	}

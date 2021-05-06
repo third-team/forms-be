@@ -48,7 +48,7 @@ describe('Forms API testing', () => {
 	describe('GET /forms', () => {
 		it('should get all forms', async () => {
 			const res = await requester.get('/forms');
-			res.status.should.equal(400);
+			res.status.should.equal(200);
 		});
 	});
 });

@@ -2,6 +2,7 @@ const Form = require('../models/Form');
 const Answer = require('../models/Answer');
 const Question = require('../models/Question');
 const User = require('../models/User');
+const objectIdRegExp = require('../utils/mongoDBObjectIdRegExp');
 
 /*
 	I want to 'validate' models before actually inserting them, so I
@@ -100,7 +101,7 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
-	router.get('/forms/:id([a-fA-F0-9]{24})', async (ctx) => {
+	router.get(`/forms/:id${objectIdRegExp}`, async (ctx) => {
 		const formId = ctx.params.id;
 
 		try {
@@ -144,7 +145,7 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
-	// should be refactored
+	// should be refactored using transactions
 	protectedRouter.post('/forms', async (ctx) => {
 		const { name, questions } = ctx.request.body;
 
@@ -213,7 +214,7 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
-	protectedRouter.put('/forms/:id([a-fA-F0-9]{24})', async (ctx) => {
+	protectedRouter.put(`/forms/:id${objectIdRegExp}`, async (ctx) => {
 		const _id = ctx.params.id;
 		const { name } = ctx.request.body;
 		const userId = ctx.request.tokenPayload.id;
@@ -255,7 +256,7 @@ module.exports = function (router, protectedRouter) {
 		ctx.body = { updated: Boolean(result.nModified) };
 	});
 
-	protectedRouter.delete('/forms/:id([a-fA-F0-9]{24})', async (ctx) => {
+	protectedRouter.delete(`/forms/:id${objectIdRegExp}`, async (ctx) => {
 		const formId = ctx.params.id;
 		const userId = ctx.request.tokenPayload.id;
 
@@ -281,6 +282,10 @@ module.exports = function (router, protectedRouter) {
 				ctx.body = { message: 'Form not found!' };
 				return;
 			}
+
+			/*
+				bug: Only the form is being removed, its questions and their answers stay in db.
+			*/
 
 			const result = await Form.deleteOne({
 				_id: formId,
