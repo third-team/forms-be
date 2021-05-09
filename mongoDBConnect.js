@@ -1,10 +1,32 @@
 const mongoose = require('mongoose');
 
 function connectDB() {
+	let connectionString = '';
+
+	if (process.env.NODE_ENV === 'development') {
+		if (process.env.testing) {
+			connectionString = process.env.MONGODB_LOCAL_TESTING_CONNECTION_URL;
+		} else {
+			connectionString = process.env.MONGODB_LOCAL_CONNECTION_URL;
+		}
+	} else {
+		// eslint-disable-next-line no-lonely-if
+		if (process.env.testing) {
+			connectionString = process.env.MONGODB_TESTING_CONNECTION_URL;
+		} else {
+			connectionString = process.env.MONGODB_CONNECTION_URL;
+		}
+	}
+
+	// process.env.NODE_ENV === 'development'
+	// 		? /*process.env.MONGODB_TESTING_CONNECTION_URL*/
+	// 		  process.env.testing === 'true'
+	// 			? process.env.MONGODB_LOCAL_TESTING_CONNECTION_URL
+	// 			: process.env.MONGODB_LOCAL_CONNECTION_URL
+	// 		: process.env.MONGODB_CONNECTION_URL
+
 	mongoose.connect(
-		process.env.NODE_ENV === 'development'
-			? process.env.MONGODB_TESTING_CONNECTION_URL
-			: process.env.MONGODB_CONNECTION_URL,
+		connectionString,
 		{
 			useNewUrlParser: true,
 			useUnifiedTopology: true,

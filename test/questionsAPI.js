@@ -2,14 +2,22 @@
 /* eslint-disable no-undef */
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const server = require('../server');
+const { ObjectId } = require('mongoose').Types.ObjectId;
+// const server = require('../server');
+const { connectDB } = require('../mongoDBConnect');
+const app = require('../app');
 const { disconnectDB } = require('../mongoDBConnect');
 const Form = require('../api/models/Form');
 const Question = require('../api/models/Question');
 const Answer = require('../api/models/Answer');
 const User = require('../api/models/User');
 const { signToken } = require('../api/utils/jwtUtils');
-const { ObjectId } = require('mongoose').Types.ObjectId;
+require('dotenv').config();
+
+process.env.PORT = 5007;
+process.env.testing = true;
+
+const server = app.listen(process.env.PORT);
 
 chai.should();
 chai.use(chaiHttp);
@@ -17,7 +25,7 @@ chai.use(chaiHttp);
 let jwtToken = null;
 let form = null;
 
-async function clearCollections() {
+async function clearAllCollections() {
 	console.log('clearing collections...');
 	await Promise.all([
 		User.deleteMany({}).exec(),
@@ -26,6 +34,13 @@ async function clearCollections() {
 		Answer.deleteMany({}).exec(),
 	]);
 	console.log('collections cleared!');
+}
+
+async function clearCollections() {
+	await Promise.all([
+		Question.deleteMany({}).exec(),
+		Answer.deleteMany({}).exec(),
+	]);
 }
 
 async function populateDB() {
@@ -69,9 +84,24 @@ function getAnswerObject(answer) {
 	};
 }
 
+function getQuestion(
+	formId = form.id,
+	question = 'test question',
+	answerType = 'radio',
+	answers = null
+) {
+	return {
+		formId,
+		question,
+		answerType,
+		answers,
+	};
+}
+
 describe('Questions API testing', () => {
 	before(async () => {
-		await clearCollections();
+		await connectDB();
+		await clearAllCollections();
 		await populateDB();
 	});
 
@@ -114,7 +144,6 @@ describe('Questions API testing', () => {
 	// 	});
 
 	// 	it('Should get status 400', async () => {
-	// 		console.log('should get status 400 started');
 	// 		await Question.deleteMany({}).exec();
 	// 		const question = {
 	// 			formId: form.id,
@@ -141,7 +170,6 @@ describe('Questions API testing', () => {
 	// 		invalidQuestion = getCopy(question);
 	// 		delete invalidQuestion.answers;
 	// 		response = await getPoster().send(invalidQuestion);
-	// 		console.log(response.status, response.body);
 	// 		response.status.should.equal(201);
 
 	// 		const questions = await Question.find({}).exec();
@@ -236,7 +264,6 @@ describe('Questions API testing', () => {
 	// describe('GET /questions', () => {
 	// 	before(async () => {
 	// 		await clearCollections();
-	// 		await populateDB();
 	// 	});
 
 	// 	it('Should GET all questions', async () => {
@@ -295,40 +322,174 @@ describe('Questions API testing', () => {
 	// 	});
 	// });
 
-	describe('GET /questions/:id', () => {
+	// describe('GET /questions/:id', () => {
+	// 	before(async () => {
+	// 		await clearCollections();
+	// 	});
+
+	// 	it('Should get one question', async () => {
+	// 		const question = {
+	// 			formId: form.id,
+	// 			question: 'test question',
+	// 			answerType: 'radio',
+	// 			answers: null,
+	// 		};
+	// 		const expectedQuestion = await Question.create(question);
+
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/questions/${expectedQuestion.id}`);
+
+	// 		response.status.should.equal(200);
+
+	// 		const actualQuestion = response.body.question;
+
+	// 		getQuestionObject(actualQuestion).should.be.eql(
+	// 			getQuestionObject(expectedQuestion)
+	// 		);
+	// 	});
+
+	// 	it('Should get response 404', async () => {
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/questions/${new ObjectId().toString()}`);
+	// 		response.status.should.equal(404);
+	// 	});
+	// });
+
+	describe('PUT /questions/:id', () => {
 		before(async () => {
 			await clearCollections();
-			await populateDB();
 		});
 
-		it('Should get one question', async () => {
-			const question = {
+		it('Question should be updated', async () => {
+			const q = {
 				formId: form.id,
 				question: 'test question',
 				answerType: 'radio',
 				answers: null,
 			};
-			const expectedQuestion = await Question.create(question);
 
-			const response = await chai
+			const answer = {
+				answer: 'test answer',
+				isCorrect: true,
+				index: 4,
+			};
+
+			const questionUpdate = {
+				question: 'updated',
+				answerType: 'checkbox',
+				index: 3,
+				answers: [answer],
+			};
+
+			const question = await Question.create(q);
+
+			Object.keys(questionUpdate).forEach((key) => {
+				question[key] = questionUpdate[key];
+			});
+
+			let response = await chai
 				.request(server)
-				.get(`/questions/${expectedQuestion.id}`);
+				.put(`/questions/${question.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(questionUpdate);
 
-			response.status.should.equal(200);
+			response.status.should.be.equal(200);
+			response.body.updated.should.be.true;
 
-			const actualQuestion = response.body.question;
-			console.log(actualQuestion);
+			response = await chai.request(server).get(`/questions/${question.id}`);
 
-			getQuestionObject(actualQuestion).should.be.eql(
-				getQuestionObject(expectedQuestion)
+			response.status.should.be.equal(200);
+			const updatedQuestion = response.body.question;
+			updatedQuestion.should.not.be.undefined;
+			getQuestionObject(updatedQuestion).should.be.eql(
+				getQuestionObject(question)
 			);
+			updatedQuestion.should.have.ownProperty('answers');
+			updatedQuestion.answers.should.be.an('array');
+			updatedQuestion.answers.should.have.lengthOf(1);
+			const updatedAnswer = question.answers[0];
+			const testAnswer = {
+				answer: updatedAnswer.answer,
+				isCorrect: updatedAnswer.isCorrect,
+				index: updatedAnswer.index,
+			};
+
+			testAnswer.should.eql({
+				answer: answer.answer,
+				isCorrect: answer.isCorrect,
+				index: answer.index,
+			});
 		});
 
-		it('Should get response 404', async () => {
-			const response = await chai
+		/*
+			for now there is an error when I try to use transactions:
+			'This MongoDB deployment does not support retryable writes.
+			Please add retryWrites=false to your connection string.'.
+			so for now, if one answer is invalid, all the answers after it will not be saved to db.
+		*/
+		it('Should add two first answers and get status 400', async () => {
+			await Question.deleteMany({}).exec();
+			await Answer.deleteMany({}).exec();
+			const q = {
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			};
+
+			const answers = [
+				{
+					answer: '1',
+					isCorrect: true,
+					index: 3,
+				},
+				{
+					answer: '2',
+					isCorrect: true,
+					index: 4,
+				},
+				{
+					answer: '3',
+					index: 5,
+				},
+			];
+
+			let question = await Question.create(q);
+			let response = await chai
 				.request(server)
-				.get(`/questions/${new ObjectId().toString()}`);
-			response.status.should.equal(404);
+				.put(`/questions/${question.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					question: 'test',
+					answers,
+				});
+			response.status.should.be.equal(400);
+
+			response = await chai.request(server).get(`/questions/${question.id}`);
+			response.status.should.be.equal(200);
+			question = response.body.question;
+			question.question.should.be.equal('test');
+			question.should.have.property('answers');
+			question.answers.should.have.lengthOf(2);
+
+			question.answers.sort((a, b) => a - b);
+			question.answers.forEach((answer, i) => {
+				const answer1Props = {
+					answer: answer.answer,
+					isCorrect: answer.isCorrect,
+					index: answer.index,
+				};
+
+				const answer2Props = {
+					answer: answers[i].answer,
+					isCorrect: answers[i].isCorrect,
+					index: answers[i].index,
+				};
+
+				answer1Props.should.be.eql(answer2Props);
+			});
 		});
 	});
 });

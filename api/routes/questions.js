@@ -42,14 +42,16 @@ module.exports = function (router, protectedRouter) {
 		const questionId = ctx.params.id;
 
 		try {
-			const question = await Question.findOne({ _id: questionId }).exec();
+			const question = await Question.findOne({ _id: questionId })
+				.populate('answers')
+				.exec();
 
 			if (!question) {
 				ctx.status = 404;
 				ctx.body = { message: 'Question not found!' };
 			} else {
 				ctx.status = 200;
-				ctx.body = { question };
+				ctx.body = { question: question.toJSON({ virtuals: true }) };
 			}
 		} catch (err) {
 			console.error(err.message);
@@ -59,6 +61,7 @@ module.exports = function (router, protectedRouter) {
 	});
 
 	protectedRouter.post('/questions', async (ctx) => {
+		// eslint-disable-next-line object-curly-newline
 		const { formId, question, answerType, answers } = ctx.request.body;
 		let { index } = ctx.request.body;
 
@@ -125,7 +128,7 @@ module.exports = function (router, protectedRouter) {
 			console.error(err.message);
 			if (err.name === 'ValidationError') {
 				ctx.status = 400;
-				ctx.body = { message: 'Invalid POST body!', error: err.message };
+				ctx.body = { message: 'Invalid POST body!' };
 			} else {
 				ctx.status = 500;
 				ctx.body = { message: 'Internal server error!' };
@@ -135,7 +138,65 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
-	protectedRouter.put(`/questions/:id${objectIdRegExp}`, (ctx) => {});
+	protectedRouter.put(`/questions/:id${objectIdRegExp}`, async (ctx) => {
+		const questionId = ctx.params.id;
+		const { formId, question, answerType, index, answers } = ctx.request.body;
+
+		/*
+			wanted to use transaction but got
+			'This MongoDB deployment does not support retryable writes.
+			Please add retryWrites=false to your connection string.' error.
+			
+			let session = null;
+			let nModified = 0;
+		*/
+		try {
+			/*
+			session = await mongoose.startSession();
+			await session.withTransaction(async () => {
+				const result = await Question.updateOne(
+					{ _id: questionId },
+					{ $set: { formId, question, answerType, index } },
+					{ omitUndefined: true, session }
+				);
+
+				nModified = result.nModified;
+
+				const answersCreationPromises = [];
+				answers.forEach((answer) => {
+					answersCreationPromises.push(Answer.create(answer));
+				});
+
+				await Promise.all(answersCreationPromises);
+			});
+			*/
+
+			const result = await Question.updateOne(
+				{ _id: questionId },
+				{ $set: { formId, question, answerType, index } },
+				{ omitUndefined: true }
+			);
+
+			const answersCreationPromises = [];
+			answers.forEach((answer) => {
+				answersCreationPromises.push(Answer.create({ ...answer, questionId }));
+			});
+
+			await Promise.all(answersCreationPromises);
+
+			ctx.status = 200;
+			ctx.body = { updated: result.nModified === 1 };
+		} catch (err) {
+			console.error(err.message);
+			if (err.name === 'ValidationError') {
+				ctx.status = 400;
+				ctx.body = { message: 'Invalid POST body!' };
+			} else {
+				ctx.status = 500;
+				ctx.body = { message: 'Internal server error!' };
+			}
+		}
+	});
 
 	protectedRouter.delete(`/questions/:id${objectIdRegExp}`, (ctx) => {});
 };
