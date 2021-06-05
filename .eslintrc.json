@@ -20,6 +20,7 @@
 		"no-plusplus": "off",
 		"operator-linebreak": ["warn", "after"],
 		"max-len": ["warn", { "code": 90 }],
-		"implicit-arrow-linebreak": "off"
+		"implicit-arrow-linebreak": "off",
+		"function-paren-newline": "off"
 	}
 }

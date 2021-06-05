@@ -284,7 +284,8 @@ module.exports = function (router, protectedRouter) {
 			}
 
 			/*
-				bug: Only the form is being removed, its questions and their answers stay in db.
+				bug: Only the form is being removed,
+				its questions and their answers stay in db.
 			*/
 
 			const result = await Form.deleteOne({

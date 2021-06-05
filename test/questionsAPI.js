@@ -84,20 +84,6 @@ function getAnswerObject(answer) {
 	};
 }
 
-function getQuestion(
-	formId = form.id,
-	question = 'test question',
-	answerType = 'radio',
-	answers = null
-) {
-	return {
-		formId,
-		question,
-		answerType,
-		answers,
-	};
-}
-
 describe('Questions API testing', () => {
 	before(async () => {
 		await connectDB();
@@ -111,254 +97,234 @@ describe('Questions API testing', () => {
 			.catch((err) => done(err));
 	});
 
-	// describe('POST /questions', () => {
-	// 	function getPoster() {
-	// 		return chai
-	// 			.request(server)
-	// 			.post('/questions')
-	// 			.set('Authorization', `Bearer ${jwtToken}`);
-	// 	}
+	describe('POST /questions', () => {
+		beforeEach(async () => {
+			await Question.deleteMany({}).exec();
+		});
 
-	// 	it('Should get status 201', async () => {
-	// 		const response = await chai
-	// 			.request(server)
-	// 			.post('/questions')
-	// 			.set('Authorization', `Bearer ${jwtToken}`)
-	// 			.send({
-	// 				formId: form.id,
-	// 				question: 'test question',
-	// 				answerType: 'radio',
-	// 				answers: null,
-	// 			});
-	// 		response.status.should.equal(201);
-	// 	});
+		function getPoster() {
+			return chai
+				.request(server)
+				.post('/questions')
+				.set('Authorization', `Bearer ${jwtToken}`);
+		}
 
-	// 	it('Should get status 401', async () => {
-	// 		const response = await chai.request(server).post('/questions').send({
-	// 			formId: form.id,
-	// 			question: 'test question',
-	// 			answerType: 'radio',
-	// 			answers: null,
-	// 		});
-	// 		response.status.should.equal(401);
-	// 	});
+		it('Should get status 201', async () => {
+			const response = await chai
+				.request(server)
+				.post('/questions')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					formId: form.id,
+					question: 'test question',
+					answerType: 'radio',
+					answers: null,
+				});
+			response.status.should.equal(201);
+		});
 
-	// 	it('Should get status 400', async () => {
-	// 		await Question.deleteMany({}).exec();
-	// 		const question = {
-	// 			formId: form.id,
-	// 			question: 'test question',
-	// 			answerType: 'radio',
-	// 			answers: null,
-	// 		};
+		it('Should get status 401', async () => {
+			const response = await chai.request(server).post('/questions').send({
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			});
+			response.status.should.equal(401);
+		});
 
-	// 		let invalidQuestion = getCopy(question);
-	// 		delete invalidQuestion.formId;
-	// 		let response = await getPoster().send(invalidQuestion);
-	// 		response.status.should.equal(400);
+		it('Should get status 400', async () => {
+			const question = {
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			};
 
-	// 		invalidQuestion = getCopy(question);
-	// 		delete invalidQuestion.answerType;
-	// 		response = await getPoster().send(invalidQuestion);
-	// 		response.status.should.equal(400);
+			let invalidQuestion = getCopy(question);
+			delete invalidQuestion.formId;
+			let response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(400);
 
-	// 		invalidQuestion = getCopy(question);
-	// 		delete invalidQuestion.question;
-	// 		response = await getPoster().send(invalidQuestion);
-	// 		response.status.should.equal(400);
+			invalidQuestion = getCopy(question);
+			delete invalidQuestion.answerType;
+			response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(400);
 
-	// 		invalidQuestion = getCopy(question);
-	// 		delete invalidQuestion.answers;
-	// 		response = await getPoster().send(invalidQuestion);
-	// 		response.status.should.equal(201);
+			invalidQuestion = getCopy(question);
+			delete invalidQuestion.question;
+			response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(400);
 
-	// 		const questions = await Question.find({}).exec();
-	// 		questions.should.be.an('array').and.have.lengthOf(1);
-	// 	});
+			invalidQuestion = getCopy(question);
+			delete invalidQuestion.answers;
+			response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(201);
 
-	// 	/*
-	// 		Don't know why, but I cannot do smth like this
+			const questions = await Question.find({}).exec();
+			questions.should.be.an('array').and.have.lengthOf(1);
+		});
 
-	// 		const sender = chai
-	// 			.request(server)
-	// 			.post('/questions')
-	// 			.set('Authorization', `Bearer ${jwtToken}`)
+		/*
+			Don't know why, but I cannot do smth like this
 
-	// 		const response = await sender.send(question); // 3 times in a row
+			const sender = chai
+				.request(server)
+				.post('/questions')
+				.set('Authorization', `Bearer ${jwtToken}`)
 
-	// 		It sends only once and it drives me insane!!!
-	// 	*/
-	// 	it('Should have 3 questions with indices [0, 1, 2]', async () => {
-	// 		await Question.deleteMany({}).exec();
+			const response = await sender.send(question); // 3 times in a row
 
-	// 		const question = {
-	// 			formId: form.id,
-	// 			question: 'test question',
-	// 			answerType: 'radio',
-	// 			answers: null,
-	// 		};
+			It sends only once and it drives me insane!!!
+		*/
+		it('Should have 3 questions with indices [0, 1, 2]', async () => {
+			const question = {
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			};
 
-	// 		/*
-	// 			Works nice, but it looks like server cannot properly handle almost simultaneous requests:
-	// 			every question gets index 0.
+			for (let i = 0; i < 3; ++i) {
+				question.question = `question #${i + 1}`;
+				// eslint-disable-next-line no-await-in-loop
+				const response = await getPoster().send(question);
 
-	// 			const requestsSendPromises = [];
+				response.status.should.equal(201);
+			}
 
-	// 			for (let i = 0; i < 3; ++i) {
-	// 				question.question = `question #${i + 1}`;
-	// 				requestsSendPromises.push(
-	// 					chai
-	// 						.request(server)
-	// 						.post('/questions')
-	// 						.set('Authorization', `Bearer ${jwtToken}`)
-	// 						.send(question)
-	// 				);
-	// 			}
+			const questions = await Question.find({}).sort({ index: 1 }).exec();
+			questions.should.have.lengthOf(3);
+			const questionsIndices = questions.map((q) => q.index);
+			questionsIndices.should.eql([0, 1, 2]);
+		});
 
-	// 			const responses = await Promise.all(requestsSendPromises);
-	// 			responses.forEach((response) => response.status.should.equal(201));
-	// 		*/
+		it('Questions should go in given order', async () => {
+			const question = {
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			};
 
-	// 		for (let i = 0; i < 3; ++i) {
-	// 			question.question = `question #${i + 1}`;
-	// 			// eslint-disable-next-line no-await-in-loop
-	// 			const response = await getPoster().send(question);
+			question.question = '1';
+			let response = await getPoster().send(question);
+			response.status.should.equal(201);
 
-	// 			response.status.should.equal(201);
-	// 		}
+			question.question = '2';
+			response = await getPoster().send(question);
 
-	// 		const questions = await Question.find({}).sort({ index: 1 }).exec();
-	// 		questions.should.have.lengthOf(3);
-	// 		const questionsIndices = questions.map((q) => q.index);
-	// 		questionsIndices.should.eql([0, 1, 2]);
-	// 	});
+			response.status.should.equal(201);
+			question.question = '3';
+			response = await getPoster().send({ ...question, index: 1 });
+			response.status.should.equal(201);
 
-	// 	it('Questions should go in given order', async () => {
-	// 		await Question.deleteMany({}).exec();
-	// 		const question = {
-	// 			formId: form.id,
-	// 			question: 'test question',
-	// 			answerType: 'radio',
-	// 			answers: null,
-	// 		};
+			const questions = await Question.find({}).sort({ index: 1 }).exec();
+			questions.should.have.lengthOf(3);
+			const questionsIndices = questions.map((q) => q.question);
+			questionsIndices.should.eql(['1', '3', '2']);
+		});
+	});
 
-	// 		question.question = '1';
-	// 		let response = await getPoster().send(question);
-	// 		response.status.should.equal(201);
+	describe('GET /questions', () => {
+		before(async () => {
+			await clearCollections();
+		});
 
-	// 		question.question = '2';
-	// 		response = await getPoster().send(question);
+		it('Should GET all questions', async () => {
+			const questions = await Question.insertMany([
+				{
+					question: 'question 1',
+					answerType: 'radio',
+					formId: form.id,
+					index: 1,
+					answers: [],
+				},
+				{
+					question: 'question 2',
+					answerType: 'checkbox',
+					formId: form.id,
+					index: 3,
+					answers: [],
+				},
+				{
+					question: 'question 3',
+					answerType: 'radio',
+					formId: form.id,
+					index: 2,
+					answers: [],
+				},
+			]);
 
-	// 		response.status.should.equal(201);
-	// 		question.question = '3';
-	// 		response = await getPoster.send({ ...question, index: 1 });
-	// 		response.status.should.equal(201);
+			const answer = await Answer.create({
+				questionId: questions[0].id,
+				answer: 'answer 1',
+				index: 1,
+				isCorrect: true,
+			});
 
-	// 		const questions = await Question.find({}).sort({ index: 1 }).exec();
-	// 		questions.should.have.lengthOf(3);
-	// 		const questionsIndices = questions.map((q) => q.question);
-	// 		questionsIndices.should.eql(['1', '3', '2']);
-	// 	});
-	// });
+			const response = await chai.request(server).get('/questions').send();
+			response.status.should.equal(200);
 
-	// describe('GET /questions', () => {
-	// 	before(async () => {
-	// 		await clearCollections();
-	// 	});
+			const responseQuestions = response.body.questions;
 
-	// 	it('Should GET all questions', async () => {
-	// 		const questions = await Question.insertMany([
-	// 			{
-	// 				question: 'question 1',
-	// 				answerType: 'radio',
-	// 				formId: form.id,
-	// 				index: 1,
-	// 				answers: [],
-	// 			},
-	// 			{
-	// 				question: 'question 2',
-	// 				answerType: 'checkbox',
-	// 				formId: form.id,
-	// 				index: 3,
-	// 				answers: [],
-	// 			},
-	// 			{
-	// 				question: 'question 3',
-	// 				answerType: 'radio',
-	// 				formId: form.id,
-	// 				index: 2,
-	// 				answers: [],
-	// 			},
-	// 		]);
+			questions.sort((a, b) => a.index - b.index);
 
-	// 		const answer = await Answer.create({
-	// 			questionId: questions[0].id,
-	// 			answer: 'answer 1',
-	// 			index: 1,
-	// 			isCorrect: true,
-	// 		});
+			for (let i = 0; i < responseQuestions.length; ++i) {
+				const question = questions[i];
+				const gotQuestion = responseQuestions[i];
 
-	// 		const response = await chai.request(server).get('/questions').send();
-	// 		response.status.should.equal(200);
+				getQuestionObject(question).should.be.eql(
+					getQuestionObject(gotQuestion)
+				);
+			}
 
-	// 		const responseQuestions = response.body.questions;
+			const questionAnswers = responseQuestions.find(
+				(q) => q.index === 1
+			).answers;
+			questionAnswers.should.be.an('array').and.have.lengthOf(1);
+			const questionAnswer = questionAnswers[0];
+			getAnswerObject(answer).should.be.eql(getAnswerObject(questionAnswer));
+		});
+	});
 
-	// 		questions.sort((a, b) => a.index - b.index);
+	describe('GET /questions/:id', () => {
+		before(async () => {
+			await clearCollections();
+		});
 
-	// 		for (let i = 0; i < responseQuestions.length; ++i) {
-	// 			const question = questions[i];
-	// 			const gotQuestion = responseQuestions[i];
+		it('Should get one question', async () => {
+			const question = {
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			};
+			const expectedQuestion = await Question.create(question);
 
-	// 			getQuestionObject(question).should.be.eql(
-	// 				getQuestionObject(gotQuestion)
-	// 			);
-	// 		}
+			const response = await chai
+				.request(server)
+				.get(`/questions/${expectedQuestion.id}`);
 
-	// 		const questionAnswers = responseQuestions.find((q) => q.index === 1)
-	// 			.answers;
-	// 		questionAnswers.should.be.an('array').and.have.lengthOf(1);
-	// 		const questionAnswer = questionAnswers[0];
-	// 		getAnswerObject(answer).should.be.eql(getAnswerObject(questionAnswer));
-	// 	});
-	// });
+			response.status.should.equal(200);
 
-	// describe('GET /questions/:id', () => {
-	// 	before(async () => {
-	// 		await clearCollections();
-	// 	});
+			const actualQuestion = response.body.question;
 
-	// 	it('Should get one question', async () => {
-	// 		const question = {
-	// 			formId: form.id,
-	// 			question: 'test question',
-	// 			answerType: 'radio',
-	// 			answers: null,
-	// 		};
-	// 		const expectedQuestion = await Question.create(question);
+			getQuestionObject(actualQuestion).should.be.eql(
+				getQuestionObject(expectedQuestion)
+			);
+		});
 
-	// 		const response = await chai
-	// 			.request(server)
-	// 			.get(`/questions/${expectedQuestion.id}`);
-
-	// 		response.status.should.equal(200);
-
-	// 		const actualQuestion = response.body.question;
-
-	// 		getQuestionObject(actualQuestion).should.be.eql(
-	// 			getQuestionObject(expectedQuestion)
-	// 		);
-	// 	});
-
-	// 	it('Should get response 404', async () => {
-	// 		const response = await chai
-	// 			.request(server)
-	// 			.get(`/questions/${new ObjectId().toString()}`);
-	// 		response.status.should.equal(404);
-	// 	});
-	// });
+		it('Should get response 404', async () => {
+			const response = await chai
+				.request(server)
+				.get(`/questions/${new ObjectId().toString()}`);
+			response.status.should.equal(404);
+		});
+	});
 
 	describe('PUT /questions/:id', () => {
-		before(async () => {
+		beforeEach(async () => {
 			await clearCollections();
 		});
 
@@ -427,11 +393,12 @@ describe('Questions API testing', () => {
 			for now there is an error when I try to use transactions:
 			'This MongoDB deployment does not support retryable writes.
 			Please add retryWrites=false to your connection string.'.
-			so for now, if one answer is invalid, all the answers after it will not be saved to db.
+			so for now, if one answer is invalid,
+			all the answers after it will not be saved to db.
+
+			With transactions this test is invalid, so is pending for reference.
 		*/
 		it('Should add two first answers and get status 400', async () => {
-			await Question.deleteMany({}).exec();
-			await Answer.deleteMany({}).exec();
 			const q = {
 				formId: form.id,
 				question: 'test question',
@@ -470,26 +437,60 @@ describe('Questions API testing', () => {
 			response = await chai.request(server).get(`/questions/${question.id}`);
 			response.status.should.be.equal(200);
 			question = response.body.question;
-			question.question.should.be.equal('test');
-			question.should.have.property('answers');
-			question.answers.should.have.lengthOf(2);
+			question.question.should.be.equal('test question');
+			question.answers.should.be.eql([]);
+		});
+	});
 
-			question.answers.sort((a, b) => a - b);
-			question.answers.forEach((answer, i) => {
-				const answer1Props = {
-					answer: answer.answer,
-					isCorrect: answer.isCorrect,
-					index: answer.index,
-				};
+	describe('DELETE /questions/:id', () => {
+		it('Should delete question and all its answers', async () => {
+			const q = {
+				formId: form.id,
+				question: 'test question',
+				answerType: 'radio',
+				answers: null,
+			};
 
-				const answer2Props = {
-					answer: answers[i].answer,
-					isCorrect: answers[i].isCorrect,
-					index: answers[i].index,
-				};
+			const answers = [
+				{
+					answer: '1',
+					isCorrect: true,
+					index: 3,
+				},
+				{
+					answer: '2',
+					isCorrect: true,
+					index: 4,
+				},
+				{
+					answer: '3',
+					isCorrect: false,
+					index: 5,
+				},
+			];
 
-				answer1Props.should.be.eql(answer2Props);
-			});
+			const question = await Question.create(q);
+			await Answer.create(
+				answers.map((answer) => ({ ...answer, questionId: question.id }))
+			);
+
+			const response = await chai
+				.request(server)
+				.delete(`/questions/${question.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send();
+
+			response.status.should.be.equal(200);
+			response.body.deleted.should.be.true;
+
+			let result = await Question.findById(question.id);
+			chai.should().equal(result, null);
+
+			result = await Answer.find({
+				_id: { $in: answers.map((answer) => answer.id) },
+			}).exec();
+
+			result.should.be.eql([]);
 		});
 	});
 });

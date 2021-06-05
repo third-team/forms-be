@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Answer = require('./Answer');
 
 const questionSchema = new mongoose.Schema(
 	{
@@ -34,5 +35,11 @@ questionSchema.virtual('answers', {
 	localField: '_id',
 	foreignField: 'questionId',
 });
+
+questionSchema.methods.drop = async function () {
+	if (!this.id) return;
+	await Answer.deleteMany({ questionId: this.id }).exec();
+	await this.delete();
+};
 
 module.exports = mongoose.model('Question', questionSchema);

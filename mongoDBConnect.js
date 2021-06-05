@@ -18,6 +18,8 @@ function connectDB() {
 		}
 	}
 
+	console.log('connecting to: ', connectionString);
+
 	// process.env.NODE_ENV === 'development'
 	// 		? /*process.env.MONGODB_TESTING_CONNECTION_URL*/
 	// 		  process.env.testing === 'true'
@@ -25,24 +27,25 @@ function connectDB() {
 	// 			: process.env.MONGODB_LOCAL_CONNECTION_URL
 	// 		: process.env.MONGODB_CONNECTION_URL
 
-	mongoose.connect(
-		connectionString,
-		{
+	return mongoose
+		.connect(connectionString, {
 			useNewUrlParser: true,
 			useUnifiedTopology: true,
-		},
-		(err) => {
+		})
+		.then(() => {
+			console.log('MongoDB connected!');
+			mongoose.connection.on('disconnected', () => {
+				console.log('MongoDB disconnected!');
+			});
+		})
+		.catch((err) => {
+			console.log('error:', err);
 			if (err) {
 				console.log('Error occured while connecting to mongodb:', err.message);
 				console.log('MongoDB is not connected!');
 				throw new Error('MongoDB is not connected!');
 			}
-			console.log('MongoDB connected!');
-			mongoose.connection.on('disconnected', () => {
-				console.log('MongoDB disconnected!');
-			});
-		}
-	);
+		});
 }
 
 function disconnectDB() {

@@ -1,8 +1,10 @@
+/* eslint-disable object-curly-newline */
 const mongoose = require('mongoose');
 const queryString = require('querystring');
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const objectIdRegExp = require('../utils/mongoDBObjectIdRegExp');
+const Form = require('../models/Form');
 
 function getQuery(url) {
 	const queryStartIndex = url.indexOf('?');
@@ -61,7 +63,6 @@ module.exports = function (router, protectedRouter) {
 	});
 
 	protectedRouter.post('/questions', async (ctx) => {
-		// eslint-disable-next-line object-curly-newline
 		const { formId, question, answerType, answers } = ctx.request.body;
 		let { index } = ctx.request.body;
 
@@ -110,16 +111,13 @@ module.exports = function (router, protectedRouter) {
 					return;
 				}
 
-				const answersCreationPromises = [];
-				answers.forEach((answer) => {
-					answersCreationPromises.push(
-						Answer.create([{ ...answer, questionId: createdQuestion.id }], {
-							session,
-						})
-					);
-				});
-
-				await Promise.all(answersCreationPromises);
+				await Answer.create(
+					answers.map((answer) => ({
+						...answer,
+						questionId: createdQuestion.id,
+					})),
+					{ session }
+				);
 			});
 
 			ctx.status = 201;
@@ -143,15 +141,13 @@ module.exports = function (router, protectedRouter) {
 		const { formId, question, answerType, index, answers } = ctx.request.body;
 
 		/*
-			wanted to use transaction but got
-			'This MongoDB deployment does not support retryable writes.
+			Transactions can only be used on replica sets, otherwise there will be
+			and error: 'This MongoDB deployment does not support retryable writes.
 			Please add retryWrites=false to your connection string.' error.
-			
-			let session = null;
-			let nModified = 0;
 		*/
+		let session = null;
+		let nModified = 0;
 		try {
-			/*
 			session = await mongoose.startSession();
 			await session.withTransaction(async () => {
 				const result = await Question.updateOne(
@@ -162,30 +158,14 @@ module.exports = function (router, protectedRouter) {
 
 				nModified = result.nModified;
 
-				const answersCreationPromises = [];
-				answers.forEach((answer) => {
-					answersCreationPromises.push(Answer.create(answer));
-				});
-
-				await Promise.all(answersCreationPromises);
+				await Answer.create(
+					answers.map((answer) => ({ ...answer, questionId })),
+					{ session }
+				);
 			});
-			*/
-
-			const result = await Question.updateOne(
-				{ _id: questionId },
-				{ $set: { formId, question, answerType, index } },
-				{ omitUndefined: true }
-			);
-
-			const answersCreationPromises = [];
-			answers.forEach((answer) => {
-				answersCreationPromises.push(Answer.create({ ...answer, questionId }));
-			});
-
-			await Promise.all(answersCreationPromises);
 
 			ctx.status = 200;
-			ctx.body = { updated: result.nModified === 1 };
+			ctx.body = { updated: nModified === 1 };
 		} catch (err) {
 			console.error(err.message);
 			if (err.name === 'ValidationError') {
@@ -198,5 +178,39 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
-	protectedRouter.delete(`/questions/:id${objectIdRegExp}`, (ctx) => {});
+	protectedRouter.delete(`/questions/:id${objectIdRegExp}`, async (ctx) => {
+		const questionId = ctx.params.id;
+		const userId = ctx.request.tokenPayload;
+
+		try {
+			const { formId } = await Question.findById(questionId, 'formId').exec();
+			if (!formId) {
+				ctx.status = 404;
+				ctx.body = { message: 'Question not found!' };
+				return;
+			}
+			const form = await Form.findById(formId).exec();
+
+			if (!form) {
+				// maybe delete all other questions
+			}
+
+			if (form) {
+				if (form.authorId === userId) {
+					const result = await Question.deleteOne({ _id: questionId }).exec();
+					await Answer.deleteMany({ questionId }).exec();
+
+					ctx.status = 200;
+					ctx.body = { deleted: result.deletedCount === 1 };
+				} else {
+					ctx.status = 403;
+					ctx.body = { message: 'Forbidden' };
+				}
+			}
+		} catch (err) {
+			console.error(err);
+			ctx.status = 500;
+			ctx.body = { message: 'Internal server error!' };
+		}
+	});
 };
