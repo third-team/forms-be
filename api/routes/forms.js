@@ -283,15 +283,20 @@ module.exports = function (router, protectedRouter) {
 				return;
 			}
 
-			/*
-				bug: Only the form is being removed,
-				its questions and their answers stay in db.
-			*/
-
 			const result = await Form.deleteOne({
 				_id: formId,
 				authorId: userId,
 			}).exec();
+
+			if (result.deletedCount === 1) {
+				const formQuestions = await Question.find({ formId }).exec();
+				const questionsDeletionPromises = [];
+				formQuestions.forEach((question) => {
+					questionsDeletionPromises.push(question.drop());
+				});
+
+				await Promise.all(questionsDeletionPromises);
+			}
 
 			ctx.status = 200;
 			ctx.body = { deleted: result.deletedCount === 1 };

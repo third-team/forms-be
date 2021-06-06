@@ -180,7 +180,7 @@ module.exports = function (router, protectedRouter) {
 
 	protectedRouter.delete(`/questions/:id${objectIdRegExp}`, async (ctx) => {
 		const questionId = ctx.params.id;
-		const userId = ctx.request.tokenPayload;
+		const userId = ctx.request.tokenPayload.id;
 
 		try {
 			const { formId } = await Question.findById(questionId, 'formId').exec();
@@ -196,7 +196,7 @@ module.exports = function (router, protectedRouter) {
 			}
 
 			if (form) {
-				if (form.authorId === userId) {
+				if (form.authorId.toString() === userId) {
 					const result = await Question.deleteOne({ _id: questionId }).exec();
 					await Answer.deleteMany({ questionId }).exec();
 

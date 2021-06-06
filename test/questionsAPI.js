@@ -50,6 +50,7 @@ async function populateDB() {
 
 	form = await Form.create({
 		name: 'test',
+		authorId: user.id,
 		questions: [],
 	});
 	console.log('DB populated!');
