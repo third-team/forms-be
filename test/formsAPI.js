@@ -1,4 +1,5 @@
 /* eslint-disable no-undef */
+const mongoose = require('mongoose');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
 const app = require('../app');
@@ -16,7 +17,32 @@ const server = app.listen(process.env.PORT);
 chai.should();
 chai.use(chaiHttp);
 
+let user = null;
 let jwtToken = null;
+const mainFormQuestions = [
+	{
+		question: 'test question 1',
+		answerType: 'radio',
+		answers: [
+			{
+				answer: 'test 1',
+				isCorrect: true,
+			},
+		],
+	},
+	{
+		question: 'test question 2',
+		answerType: 'checkbox',
+		answers: [
+			{
+				answer: 'test 2',
+				isCorrect: false,
+			},
+		],
+	},
+];
+
+const mainForm = { name: 'test form', questions: mainFormQuestions };
 
 async function clearCollections() {
 	console.log('clearing collections...');
@@ -31,7 +57,7 @@ async function clearCollections() {
 
 async function populateDB() {
 	console.log('populating DB...');
-	const user = await User.create({ email: 'test', password: 'test' });
+	user = await User.create({ email: 'test', password: 'test' });
 	jwtToken = await signToken({ id: user.id });
 	console.log('DB populated!');
 }
@@ -51,47 +77,124 @@ describe('Forms API testing', () => {
 
 	describe('GET /forms', () => {
 		it('should get all forms', async () => {
-			const res = await chai.request(server).get('/forms');
-			res.status.should.equal(200);
+			const forms = [
+				{
+					name: 'form 1',
+					authorId: new mongoose.Types.ObjectId(),
+				},
+				{
+					name: 'form 2',
+					authorId: new mongoose.Types.ObjectId(),
+				},
+			];
+
+			const createdForms = await Form.create(forms);
+
+			const response = await chai.request(server).get('/forms');
+			response.status.should.equal(200);
+
+			const obtainedForms = response.body.forms;
+			chai.should().exist(obtainedForms);
+			obtainedForms.should.have.lengthOf(2);
+			obtainedForms.should.have.deep.members([
+				{
+					_id: createdForms[0].id,
+					name: createdForms[0].name,
+				},
+				{
+					_id: createdForms[1].id,
+					name: createdForms[1].name,
+				},
+			]);
+		});
+	});
+
+	describe('GET /forms/:id', () => {
+		it('should get full form', async () => {
+			const mainFormAuthorId = new mongoose.Types.ObjectId();
+			const createdForm = await Form.create({
+				name: mainForm.name,
+				authorId: mainFormAuthorId,
+			});
+			const createdQuestions = await Question.create(
+				mainFormQuestions.map((question, index) => ({
+					...question,
+					formId: createdForm.id,
+					index,
+				}))
+			);
+
+			await Promise.all(
+				createdQuestions.map((question, questionIndex) =>
+					Answer.create(
+						mainFormQuestions[questionIndex].answers.map(
+							(answer, answerIndex) => ({
+								...answer,
+								questionId: question.id,
+								index: answerIndex,
+							})
+						)
+					)
+				)
+			);
+
+			const response = await chai
+				.request(server)
+				.get(`/forms/${createdForm.id}`);
+			response.status.should.be.equal(200);
+			const obtainedForm = response.body.form;
+			chai.should().exist(obtainedForm);
+
+			obtainedForm.should.have.property('name', mainForm.name);
+			obtainedForm.should.have.property(
+				'authorId',
+				mainFormAuthorId.toString()
+			);
+			chai.should().exist(obtainedForm.questions);
+			obtainedForm.questions.should.have.lengthOf(mainFormQuestions.length);
+			obtainedForm.questions.forEach((obtainedQuestion, index) => {
+				const mainFormQuestion = mainFormQuestions[index];
+				obtainedQuestion.should.have.property(
+					'question',
+					mainFormQuestion.question
+				);
+				obtainedQuestion.should.have.property(
+					'answerType',
+					mainFormQuestion.answerType
+				);
+				chai.should().exist(obtainedQuestion.answers);
+				obtainedQuestion.answers.should.have.lengthOf(
+					mainFormQuestion.answers.length
+				);
+				obtainedQuestion.should.have.property('index');
+
+				obtainedQuestion.answers.forEach((obtainedAnswer, answerIndex) => {
+					const mainFormQuestionAnswer = mainFormQuestion.answers[answerIndex];
+					obtainedAnswer.should.have.property(
+						'answer',
+						mainFormQuestionAnswer.answer
+					);
+					obtainedAnswer.should.have.property(
+						'isCorrect',
+						mainFormQuestionAnswer.isCorrect
+					);
+					obtainedAnswer.should.have.property('index');
+				});
+			});
 		});
 	});
 
 	describe('POST /forms', () => {
 		it('should post form', async () => {
-			const questions = [
-				{
-					question: 'test question 1',
-					answerType: 'radio',
-					answers: [
-						{
-							answer: 'test 1',
-							isCorrect: true,
-						},
-					],
-				},
-				{
-					question: 'test question 2',
-					answerType: 'checkbox',
-					answers: [
-						{
-							answer: 'test 2',
-							isCorrect: false,
-						},
-					],
-				},
-			];
 			const { body } = await chai
 				.request(server)
 				.post('/forms')
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({
-					name: 'test form',
-					questions,
-				});
+				.send(mainForm);
 
 			const createdForm = await Form.findById(body.formId).exec();
 			createdForm.id.should.not.be.equal(null);
-			createdForm.name.should.be.equal('test form');
+			createdForm.name.should.be.equal(mainForm.name);
 
 			const createdQuestions = (
 				await Question.find({
@@ -104,7 +207,7 @@ describe('Forms API testing', () => {
 
 			createdQuestions.should.have.lengthOf(2);
 			createdQuestions.forEach((createdQuestion, index) => {
-				const question = questions[index];
+				const question = mainFormQuestions[index];
 				createdQuestion.question.should.be.equal(question.question);
 				createdQuestion.answerType.should.be.equal(question.answerType);
 				createdQuestion.answers.should.have.lengthOf(question.answers.length);
@@ -117,6 +220,28 @@ describe('Forms API testing', () => {
 		});
 	});
 
+	describe('PUT /forms/:id', () => {
+		it('should update form name', async () => {
+			const createdForm = await Form.create({
+				name: 'test form',
+				authorId: user.id,
+			});
+
+			const response = await chai
+				.request(server)
+				.put(`/forms/${createdForm.id}`)
+				.set('Authorization', `Bearer ${await signToken({ id: user.id })}`)
+				.send({ name: 'updated name' });
+
+			response.status.should.be.equal(200);
+			response.body.updated.should.be.equal(true);
+
+			const updatedForm = await Form.findById(createdForm.id).exec();
+			chai.should().not.equal(updatedForm, null);
+			updatedForm.should.have.property('name', 'updated name');
+		});
+	});
+
 	describe('DELETE /forms/:id', () => {
 		it('should delete form and its questions', async () => {
 			const {
@@ -125,31 +250,7 @@ describe('Forms API testing', () => {
 				.request(server)
 				.post('/forms')
 				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({
-					name: 'test form',
-					questions: [
-						{
-							question: 'test quesiton 1',
-							answerType: 'radio',
-							answers: [
-								{
-									answer: 'test 1',
-									isCorrect: true,
-								},
-							],
-						},
-						{
-							question: 'test quesiton 2',
-							answerType: 'checkbox',
-							answers: [
-								{
-									answer: 'test 2',
-									isCorrect: false,
-								},
-							],
-						},
-					],
-				});
+				.send(mainForm);
 
 			const questionsIds = (await Question.find({ formId }, '_id').exec()).map(
 				(question) => question._id
