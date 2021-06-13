@@ -3,6 +3,7 @@ const User = require('../models/User');
 const createAuthRoutes = require('./auth');
 const createFormRoutes = require('./forms');
 const createQuestionRoutes = require('./questions');
+const createAnswerRoutes = require('./answers');
 
 const router = new KoaRouter();
 const protectedRouter = new KoaRouter();
@@ -14,6 +15,7 @@ router.get('/', (ctx) => {
 createAuthRoutes(router);
 createFormRoutes(router, protectedRouter);
 createQuestionRoutes(router, protectedRouter);
+createAnswerRoutes(router, protectedRouter);
 
 // dummy API
 router.get('/users', async (ctx) => {

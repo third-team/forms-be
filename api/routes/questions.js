@@ -1,16 +1,10 @@
 /* eslint-disable object-curly-newline */
 const mongoose = require('mongoose');
-const queryString = require('querystring');
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const objectIdRegExp = require('../utils/mongoDBObjectIdRegExp');
 const Form = require('../models/Form');
-
-function getQuery(url) {
-	const queryStartIndex = url.indexOf('?');
-	if (queryStartIndex === -1) return {};
-	return queryString.decode(url.substr(queryStartIndex + 1));
-}
+const { getQuery } = require('../utils/httpUtils');
 
 module.exports = function (router, protectedRouter) {
 	router.get('/questions', async (ctx) => {
