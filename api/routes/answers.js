@@ -4,6 +4,20 @@ const Answer = require('../models/Answer');
 const { getQuery, respondeWith500 } = require('../utils/httpUtils');
 const objectIdRegExpString = require('../utils/mongoDBObjectIdRegExp');
 
+async function doesQuestionBelongToUser(questionId, userId) {
+	try {
+		const question = await Question.findById(questionId, 'formId').exec();
+		if (!question) {
+			return false;
+		}
+
+		return await Form.exists({ _id: question.formId, authorId: userId });
+	} catch (err) {
+		console.error('doesQuestionBelongToUser():', err.message);
+		return false;
+	}
+}
+
 module.exports = function (router, protectedRouter) {
 	const objectIdRegExp = new RegExp(objectIdRegExpString);
 
@@ -56,17 +70,7 @@ module.exports = function (router, protectedRouter) {
 		const { answer, isCorrect, questionId } = ctx.request.body;
 		let { index } = ctx.request.body;
 
-		// check if question belongs to form that belongs to user.
-		const question = await Question.findById(questionId, 'formId').exec();
-		if (!question) {
-			ctx.status = 400;
-			ctx.body = { message: 'Invalid POST body!' };
-			return;
-		}
-		const { formId } = question;
-		const userIsAuthor = await Form.exists({ _id: formId, authorId: userId });
-
-		if (!userIsAuthor) {
+		if (!(await doesQuestionBelongToUser(questionId, userId))) {
 			ctx.status = 403;
 			ctx.body = { message: 'Forbidden!' };
 			return;
