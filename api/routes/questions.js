@@ -62,6 +62,11 @@ module.exports = function (router, protectedRouter) {
 
 		let session = null;
 		try {
+			// maybe a bug (should be in transaction)
+			// also it looks like anybody with any token can change
+			// someone else's question indices.
+			// The check if the form belongs to user
+			// (id is obtained from token) must be done.
 			if (index === undefined) {
 				const questions = await Question.find({ formId })
 					.sort({ index: -1 })

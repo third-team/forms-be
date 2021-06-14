@@ -10,11 +10,14 @@ const Form = require('../api/models/Form');
 const Question = require('../api/models/Question');
 const Answer = require('../api/models/Answer');
 const { connectDB, disconnectDB } = require('../mongoDBConnect');
+const { signToken } = require('../api/utils/jwtUtils');
 require('dotenv').config();
 
 process.env.testing = true;
 
 const server = app.listen(process.env.PORT);
+let user = null;
+let jwtToken = null;
 
 chai.should();
 chai.use(chaiHttp);
@@ -51,7 +54,16 @@ async function clearAllCollections() {
 	console.log('collections cleared!');
 }
 
+async function populateDB() {
+	console.log('populating DB...');
+	user = await User.create({ email: 'test', password: 'test' });
+	jwtToken = await signToken({ id: user.id });
+	console.log('DB populated!');
+}
+
 function compareAnswers(answer1, answer2) {
+	console.log('answer1:', answer1);
+	console.log('answer2:', answer2);
 	answer1.should.have.property('_id', answer2._id.toString());
 	answer1.should.have.property('answer', answer2.answer);
 	answer1.should.have.property('isCorrect', answer2.isCorrect);
@@ -63,6 +75,7 @@ describe('Answers API testing', () => {
 	before(async () => {
 		await connectDB();
 		await clearAllCollections();
+		await populateDB();
 	});
 
 	after((done) => {
@@ -150,6 +163,67 @@ describe('Answers API testing', () => {
 				.request(server)
 				.get(`/answers/${'zzzzzzzzzzzzzzzzzzzzzzzz'}`);
 			response.status.should.be.equal(400);
+		});
+	});
+
+	describe('POST /answers', () => {
+		it('should successfully post answer', async () => {
+			const createdForm = await Form.create({
+				authorId: user.id,
+				name: 'testForm',
+			});
+			const formQuestion = await Question.create({
+				question: 'test?',
+				answerType: 'radio',
+				formId: createdForm.id,
+				index: 1,
+			});
+			const postedAnswer = {
+				answer: 'yos!',
+				isCorrect: true,
+				questionId: formQuestion.id,
+				index: 1,
+			};
+			const response = await chai
+				.request(server)
+				.post('/answers')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(postedAnswer);
+
+			response.status.should.be.equal(201);
+			const { answerId } = response.body;
+			chai.should().exist(answerId);
+			const createdAnswer = await Answer.findById(answerId).exec();
+			chai.should().exist(createdAnswer);
+			compareAnswers({ ...postedAnswer, _id: answerId }, createdAnswer);
+		});
+
+		it('should get status 403 Forbidden', async () => {
+			const createdForm = await Form.create({
+				name: 'testForm',
+				authorId: new ObjectId(),
+			});
+			const createdQuestion = await Question.create({
+				question: 'test?',
+				answerType: 'checkbox',
+				formId: createdForm.id,
+				index: 2,
+			});
+			const response = await chai
+				.request(server)
+				.post('/answers')
+				.set(
+					'Authorization',
+					`Bearer ${await signToken({ id: new ObjectId() })}`
+				)
+				.send({
+					questionId: createdQuestion.id,
+					index: 1,
+					answer: 'yos!',
+					isCorrect: true,
+				});
+
+			response.status.should.be.equal(403);
 		});
 	});
 });
