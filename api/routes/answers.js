@@ -1,23 +1,8 @@
 /* eslint-disable object-curly-newline */
-const Form = require('../models/Form');
-const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const { getQuery, respondeWith500 } = require('../utils/httpUtils');
 const objectIdRegExpString = require('../utils/mongoDBObjectIdRegExp');
-
-async function doesQuestionBelongToUser(questionId, userId) {
-	try {
-		const question = await Question.findById(questionId, 'formId').exec();
-		if (!question) {
-			return false;
-		}
-
-		return await Form.exists({ _id: question.formId, authorId: userId });
-	} catch (err) {
-		console.error('doesQuestionBelongToUser():', err.message);
-		return false;
-	}
-}
+const { doesQuestionBelongToUser } = require('../utils/dbUtils');
 
 module.exports = function (router, protectedRouter) {
 	const objectIdRegExp = new RegExp(objectIdRegExpString);

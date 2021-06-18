@@ -149,24 +149,24 @@ module.exports = function (router, protectedRouter) {
 	protectedRouter.post('/forms', async (ctx) => {
 		const { name, questions } = ctx.request.body;
 
-		const authorId = ctx.request.tokenPayload.id;
-		const author = await User.exists({ _id: authorId });
+		const userId = ctx.request.tokenPayload.id;
+		const userExists = await User.exists({ _id: userId });
 
-		if (!author) {
+		if (!userExists) {
 			ctx.status = 403;
 			ctx.body = { message: 'No such user!' };
 			return;
 		}
 
 		// maybe it is better to do transactions
-		if (!isFormValid({ authorId, name, questions })) {
+		if (!isFormValid({ authorId: userId, name, questions })) {
 			ctx.status = 400;
 			ctx.body = { message: 'Invalid POST body!' };
 			return;
 		}
 
 		try {
-			const form = await Form.create({ authorId, name });
+			const form = await Form.create({ authorId: userId, name });
 
 			const questionsCreationPromises = [];
 
@@ -234,7 +234,7 @@ module.exports = function (router, protectedRouter) {
 
 		if (!_id) {
 			ctx.status = 400;
-			ctx.body = { message: 'Invalid PUT body!' };
+			ctx.body = { message: 'Invalid form id!' };
 			return;
 		}
 

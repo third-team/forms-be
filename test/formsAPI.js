@@ -193,7 +193,7 @@ describe('Forms API testing', () => {
 				.send(mainForm);
 
 			const createdForm = await Form.findById(body.formId).exec();
-			createdForm.id.should.not.be.equal(null);
+			chai.should().exist(createdForm.id);
 			createdForm.name.should.be.equal(mainForm.name);
 
 			const createdQuestions = (

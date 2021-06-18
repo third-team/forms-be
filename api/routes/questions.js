@@ -5,6 +5,7 @@ const Answer = require('../models/Answer');
 const objectIdRegExp = require('../utils/mongoDBObjectIdRegExp');
 const Form = require('../models/Form');
 const { getQuery } = require('../utils/httpUtils');
+const { doesQuestionBelongToUser } = require('../utils/dbUtils');
 
 module.exports = function (router, protectedRouter) {
 	router.get('/questions', async (ctx) => {
@@ -57,11 +58,32 @@ module.exports = function (router, protectedRouter) {
 	});
 
 	protectedRouter.post('/questions', async (ctx) => {
+		const userId = ctx.request.tokenPayload.id;
 		const { formId, question, answerType, answers } = ctx.request.body;
 		let { index } = ctx.request.body;
 
+		console.log('formId1:', formId);
+
+		if (!formId) {
+			console.log('formId2:', formId);
+			ctx.status = 400;
+			ctx.body = { message: 'FormId not specified!' };
+			return;
+		}
+
 		let session = null;
 		try {
+			const form = await Form.findById(formId).exec();
+			if (!form) {
+				ctx.status = 404;
+				ctx.body = { message: 'Form not found!' };
+				return;
+			}
+			if (form.authorId.toString() !== userId) {
+				ctx.status = 403;
+				ctx.body = { message: 'Forbidden!' };
+				return;
+			}
 			// maybe a bug (should be in transaction)
 			// also it looks like anybody with any token can change
 			// someone else's question indices.
@@ -139,6 +161,7 @@ module.exports = function (router, protectedRouter) {
 	// todo: implement check whether index is already taken.
 	protectedRouter.put(`/questions/:id${objectIdRegExp}`, async (ctx) => {
 		const questionId = ctx.params.id;
+		const userId = ctx.request.tokenPayload.id;
 		const { formId, question, answerType, index, answers } = ctx.request.body;
 
 		/*
@@ -149,6 +172,29 @@ module.exports = function (router, protectedRouter) {
 		let session = null;
 		let nModified = 0;
 		try {
+			const questionById = await Question.findById(questionId).exec();
+			if (!questionById) {
+				ctx.status = 404;
+				ctx.body = { message: 'Question not found!' };
+				return;
+			}
+			if (!(await doesQuestionBelongToUser(questionId, userId))) {
+				ctx.status = 403;
+				ctx.body = { message: 'Forbidden!' };
+				return;
+			}
+			if (formId) {
+				const formWithGivenIdBelongsToUser = await Form.exists({
+					_id: formId,
+					authorId: userId,
+				}).exec();
+				if (!formWithGivenIdBelongsToUser) {
+					ctx.status = 403;
+					ctx.body = { message: 'Forbidden!' };
+					return;
+				}
+			}
+
 			session = await mongoose.startSession();
 			await session.withTransaction(async () => {
 				const result = await Question.updateOne(
@@ -184,7 +230,8 @@ module.exports = function (router, protectedRouter) {
 		const userId = ctx.request.tokenPayload.id;
 
 		try {
-			const { formId } = await Question.findById(questionId, 'formId').exec();
+			const question = await Question.findById(questionId, 'formId').exec();
+			const { formId } = question;
 			if (!formId) {
 				ctx.status = 404;
 				ctx.body = { message: 'Question not found!' };
