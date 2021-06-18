@@ -1,3 +1,4 @@
+/* eslint-disable object-curly-newline */
 const Form = require('../models/Form');
 const Question = require('../models/Question');
 const Answer = require('../models/Answer');
@@ -65,6 +66,7 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
+	// maybe should use transaction.
 	protectedRouter.post('/answers', async (ctx) => {
 		const userId = ctx.request.tokenPayload.id;
 		const { answer, isCorrect, questionId } = ctx.request.body;
@@ -111,6 +113,72 @@ module.exports = function (router, protectedRouter) {
 
 			ctx.status = 201;
 			ctx.body = { message: 'ok', answerId: createdAnswer.id };
+		} catch (err) {
+			console.error(err.message);
+			if (err.name === 'ValidationError') {
+				ctx.status = 400;
+				ctx.body = { message: 'Invalid POST body!' };
+				return;
+			}
+			respondeWith500(ctx);
+		}
+	});
+
+	// maybe should use transaction.
+	protectedRouter.put('/answers/:id', async (ctx) => {
+		const userId = ctx.request.tokenPayload.id;
+		const answerId = ctx.params.id;
+		const { answer, questionId, isCorrect, index } = ctx.request.body;
+
+		try {
+			const answerById = await Answer.findById(answerId, 'questionId').exec();
+			if (!answerById) {
+				ctx.status = 404;
+				ctx.body = { message: 'Answer not found' };
+				return;
+			}
+			if (!(await doesQuestionBelongToUser(answerById.questionId, userId))) {
+				ctx.status = 403;
+				ctx.body = { message: 'Forbidden!' };
+				return;
+			}
+
+			/*
+        If questionId is supplied, we should check whether question with id 'questionId'
+        also belongs to this user.
+      */
+			if (questionId) {
+				if (!(await doesQuestionBelongToUser(questionId, userId))) {
+					ctx.status = 403;
+					ctx.body = { message: 'Forbidden!' };
+					return;
+				}
+			}
+
+			// check whether the index is taken.
+			if (index !== undefined && index !== null) {
+				const indexAlreadyTaken = await Answer.exists({
+					questionId: answerById.questionId,
+					index,
+				});
+				if (indexAlreadyTaken) {
+					console.log('taken');
+					await Answer.updateMany(
+						{ questionId: answerById.questionId, index: { $gte: index } },
+						{ $inc: { index: 1 } }
+					).exec();
+				}
+			}
+			// =================================
+
+			const result = await Answer.updateOne(
+				{ _id: answerId },
+				{ answer, questionId, isCorrect, index },
+				{ omitUndefined: true }
+			);
+
+			ctx.status = 200;
+			ctx.body = { updated: result.nModified === 1 };
 		} catch (err) {
 			console.error(err.message);
 			if (err.name === 'ValidationError') {

@@ -135,6 +135,8 @@ module.exports = function (router, protectedRouter) {
 		}
 	});
 
+	// bug: you can update question with index, that is already taken.
+	// todo: implement check whether index is already taken.
 	protectedRouter.put(`/questions/:id${objectIdRegExp}`, async (ctx) => {
 		const questionId = ctx.params.id;
 		const { formId, question, answerType, index, answers } = ctx.request.body;

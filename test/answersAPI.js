@@ -19,6 +19,9 @@ const server = app.listen(process.env.PORT);
 let user = null;
 let jwtToken = null;
 
+let globalForm;
+let globalQuestion;
+
 chai.should();
 chai.use(chaiHttp);
 
@@ -58,12 +61,21 @@ async function populateDB() {
 	console.log('populating DB...');
 	user = await User.create({ email: 'test', password: 'test' });
 	jwtToken = await signToken({ id: user.id });
+
+	globalForm = await Form.create({
+		authorId: user.id,
+		name: 'testForm',
+	});
+	globalQuestion = await Question.create({
+		question: 'test?',
+		answerType: 'radio',
+		formId: globalForm.id,
+		index: 1,
+	});
 	console.log('DB populated!');
 }
 
 function compareAnswers(answer1, answer2) {
-	console.log('answer1:', answer1);
-	console.log('answer2:', answer2);
 	answer1.should.have.property('_id', answer2._id.toString());
 	answer1.should.have.property('answer', answer2.answer);
 	answer1.should.have.property('isCorrect', answer2.isCorrect);
@@ -168,20 +180,10 @@ describe('Answers API testing', () => {
 
 	describe('POST /answers', () => {
 		it('should successfully post answer', async () => {
-			const createdForm = await Form.create({
-				authorId: user.id,
-				name: 'testForm',
-			});
-			const formQuestion = await Question.create({
-				question: 'test?',
-				answerType: 'radio',
-				formId: createdForm.id,
-				index: 1,
-			});
 			const postedAnswer = {
 				answer: 'yos!',
 				isCorrect: true,
-				questionId: formQuestion.id,
+				questionId: globalQuestion.id,
 				index: 1,
 			};
 			const response = await chai
@@ -199,16 +201,6 @@ describe('Answers API testing', () => {
 		});
 
 		it('should get status 403 Forbidden', async () => {
-			const createdForm = await Form.create({
-				name: 'testForm',
-				authorId: new ObjectId(),
-			});
-			const createdQuestion = await Question.create({
-				question: 'test?',
-				answerType: 'checkbox',
-				formId: createdForm.id,
-				index: 2,
-			});
 			const response = await chai
 				.request(server)
 				.post('/answers')
@@ -217,13 +209,94 @@ describe('Answers API testing', () => {
 					`Bearer ${await signToken({ id: new ObjectId() })}`
 				)
 				.send({
-					questionId: createdQuestion.id,
+					questionId: globalQuestion.id,
 					index: 1,
 					answer: 'yos!',
 					isCorrect: true,
 				});
 
 			response.status.should.be.equal(403);
+		});
+	});
+
+	describe('PUT /answers', () => {
+		it('should update successfully', async () => {
+			const createdAnswer = await Answer.create({
+				answer: 'true',
+				isCorrect: true,
+				questionId: globalQuestion.id,
+				index: 1,
+			});
+
+			const answerUpdate = {
+				answer: 'false',
+				isCorrect: false,
+				questionId: globalQuestion.id,
+				index: 3,
+			};
+
+			const response = await chai
+				.request(server)
+				.put(`/answers/${createdAnswer.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(answerUpdate);
+
+			response.status.should.be.equal(200);
+			response.body.should.have.property('updated', true);
+
+			const updatedAnswer = await Answer.findById(createdAnswer.id).exec();
+			chai.should().exist(updatedAnswer);
+			compareAnswers({ ...answerUpdate, _id: createdAnswer.id }, updatedAnswer);
+		});
+
+		it('should update other indices when given is already taken', async () => {
+			const createdAnswers = await Answer.create(
+				[
+					...mainAnswers,
+					{
+						answer: 'test4?',
+						index: 4,
+						isCorrect: true,
+					},
+				].map((answer) => ({
+					...answer,
+					questionId: globalQuestion.id,
+				}))
+			);
+			const answerUpdate = {
+				index: 1,
+			};
+			const response = await chai
+				.request(server)
+				.put(`/answers/${createdAnswers[3].id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(answerUpdate);
+
+			response.status.should.be.equal(200);
+			const obtainedAnswers = await Answer.find({
+				_id: { $in: createdAnswers.map((answer) => answer.id) },
+			})
+				.sort({ index: 1 })
+				.exec();
+
+			const answersShouldBe = [
+				{ ...createdAnswers[3].toJSON(), index: 1 },
+				...[createdAnswers[0], createdAnswers[1], createdAnswers[2]].map(
+					(answer) => ({ ...answer.toJSON(), index: answer.index + 1 })
+				),
+			];
+			obtainedAnswers.forEach((obtainedAnswer, answerIndex) => {
+				compareAnswers(
+					{
+						answer: obtainedAnswer.answer,
+						isCorrect: obtainedAnswer.isCorrect,
+						index: obtainedAnswer.index,
+						_id: obtainedAnswer._id.toString(),
+						questionId: obtainedAnswer.questionId.toString(),
+					},
+					answersShouldBe[answerIndex]
+				);
+			});
 		});
 	});
 });
