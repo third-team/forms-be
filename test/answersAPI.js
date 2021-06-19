@@ -112,7 +112,7 @@ describe('Answers API testing', () => {
 			obtainedAnswers.should.be.an('array');
 			obtainedAnswers.should.have.lengthOf(3);
 
-			obtainedAnswers.sort((a, b) => a - b);
+			obtainedAnswers.sort((a, b) => a.index - b.index);
 			obtainedAnswers.forEach((obtainedAnswer, obtainedAnswerIndex) => {
 				const createdAnswer = createdAnswers[obtainedAnswerIndex];
 				compareAnswers(obtainedAnswer, createdAnswer);
@@ -139,7 +139,7 @@ describe('Answers API testing', () => {
 			obtainedAnswers.should.be.an('array');
 			obtainedAnswers.should.have.lengthOf(2);
 
-			obtainedAnswers.sort((a, b) => a - b);
+			obtainedAnswers.sort((a, b) => a.index - b.index);
 			obtainedAnswers.forEach((obtainedAnswer, obtainedAnswerIndex) => {
 				const createdAnswer = createdAnswers[obtainedAnswerIndex];
 				compareAnswers(obtainedAnswer, createdAnswer);
