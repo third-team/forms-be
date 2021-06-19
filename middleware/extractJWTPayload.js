@@ -13,6 +13,7 @@ async function extractJWTPayload(ctx, next) {
 	if (token) {
 		try {
 			ctx.request.tokenPayload = await verifyToken(token);
+			console.log(ctx.request.tokenPayload);
 			if (!ctx.request.tokenPayload.id) throw new Error('No id in token!');
 		} catch (err) {
 			console.error('Error occured while verifying token:', err.message);

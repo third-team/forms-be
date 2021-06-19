@@ -1,6 +1,6 @@
 /* eslint-disable object-curly-newline */
 const Answer = require('../models/Answer');
-const { getQuery, respondeWith500 } = require('../utils/httpUtils');
+const { getQuery, respondWith500 } = require('../utils/httpUtils');
 const objectIdRegExpString = require('../utils/mongoDBObjectIdRegExp');
 const { doesQuestionBelongToUser } = require('../utils/dbUtils');
 
@@ -27,7 +27,7 @@ module.exports = function (router, protectedRouter) {
 			ctx.body = { answers };
 		} catch (err) {
 			console.error(err.message);
-			respondeWith500(ctx);
+			respondWith500(ctx);
 		}
 	});
 
@@ -47,7 +47,7 @@ module.exports = function (router, protectedRouter) {
 			ctx.body = { answer };
 		} catch (err) {
 			console.error(err.message);
-			respondeWith500(ctx);
+			respondWith500(ctx);
 		}
 	});
 
@@ -105,7 +105,7 @@ module.exports = function (router, protectedRouter) {
 				ctx.body = { message: 'Invalid POST body!' };
 				return;
 			}
-			respondeWith500(ctx);
+			respondWith500(ctx);
 		}
 	});
 
@@ -171,7 +171,35 @@ module.exports = function (router, protectedRouter) {
 				ctx.body = { message: 'Invalid POST body!' };
 				return;
 			}
-			respondeWith500(ctx);
+			respondWith500(ctx);
+		}
+	});
+
+	protectedRouter.delete('/answers/:id', async (ctx) => {
+		const userId = ctx.request.tokenPayload.id;
+		const answerId = ctx.params.id;
+
+		try {
+			const answer = await Answer.findById(answerId);
+			if (!answer) {
+				ctx.status = 404;
+				ctx.body = { message: 'Answer not found!' };
+				return;
+			}
+
+			if (!(await doesQuestionBelongToUser(answer.questionId, userId))) {
+				ctx.status = 403;
+				ctx.body = { message: 'Forbidden!' };
+				return;
+			}
+
+			const result = await Answer.deleteOne({ _id: answerId }).exec();
+
+			ctx.status = 200;
+			ctx.body = { message: 'ok', deleted: result.deletedCount === 1 };
+		} catch (err) {
+			console.error(err.message);
+			respondWith500(ctx);
 		}
 	});
 };

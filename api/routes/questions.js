@@ -62,10 +62,7 @@ module.exports = function (router, protectedRouter) {
 		const { formId, question, answerType, answers } = ctx.request.body;
 		let { index } = ctx.request.body;
 
-		console.log('formId1:', formId);
-
 		if (!formId) {
-			console.log('formId2:', formId);
 			ctx.status = 400;
 			ctx.body = { message: 'FormId not specified!' };
 			return;

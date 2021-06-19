@@ -3,7 +3,7 @@ const User = require('../models/User');
 
 async function getToken(ctx, payload) {
 	try {
-		const token = await signToken({ payload });
+		const token = await signToken(payload);
 		ctx.status = 200;
 		ctx.body = { token };
 	} catch (err) {

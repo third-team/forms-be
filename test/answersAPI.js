@@ -15,7 +15,8 @@ require('dotenv').config();
 
 process.env.testing = true;
 
-const server = app.listen(process.env.PORT);
+const server = app.listen(++process.env.PORT);
+
 let user = null;
 let jwtToken = null;
 
@@ -219,7 +220,7 @@ describe('Answers API testing', () => {
 		});
 	});
 
-	describe('PUT /answers', () => {
+	describe('PUT /answers/:id', () => {
 		it('should update successfully', async () => {
 			const createdAnswer = await Answer.create({
 				answer: 'true',
@@ -297,6 +298,77 @@ describe('Answers API testing', () => {
 					answersShouldBe[answerIndex]
 				);
 			});
+		});
+
+		it('should get 403 Forbidden status', async () => {
+			const createdAnswer = await Answer.create({
+				answer: 'true',
+				isCorrect: true,
+				questionId: globalQuestion.id,
+				index: 1,
+			});
+
+			const answerUpdate = {
+				index: 3,
+			};
+
+			const response = await chai
+				.request(server)
+				.put(`/answers/${createdAnswer.id}`)
+				.set(
+					'Authorization',
+					`Bearer ${await signToken({ id: new ObjectId() })}`
+				)
+				.send(answerUpdate);
+
+			response.status.should.be.equal(403);
+		});
+	});
+
+	describe('DELETE /answers/:id', () => {
+		it('should delete successfully', async () => {
+			const answer = {
+				answer: 'testAnswer',
+				isCorrect: true,
+				questionId: globalQuestion.id,
+				index: 1,
+			};
+
+			const createdAnswer = await Answer.create(answer);
+			const response = await chai
+				.request(server)
+				.delete(`/answers/${createdAnswer.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`);
+
+			response.status.should.be.equal(200);
+			response.body.should.have.property('deleted', true);
+
+			const answerExists = await Answer.exists({ _id: createdAnswer.id });
+			answerExists.should.be.equal(false);
+		});
+
+		it('should get 403 Forbidden status', async () => {
+			const createdAnswer = await Answer.create({
+				answer: 'true',
+				isCorrect: true,
+				questionId: globalQuestion.id,
+				index: 1,
+			});
+
+			const answerUpdate = {
+				index: 3,
+			};
+
+			const response = await chai
+				.request(server)
+				.put(`/answers/${createdAnswer.id}`)
+				.set(
+					'Authorization',
+					`Bearer ${await signToken({ id: new ObjectId() })}`
+				)
+				.send(answerUpdate);
+
+			response.status.should.be.equal(403);
 		});
 	});
 });

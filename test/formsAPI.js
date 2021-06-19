@@ -12,7 +12,10 @@ const { signToken } = require('../api/utils/jwtUtils');
 require('dotenv').config();
 
 process.env.testing = true;
-const server = app.listen(process.env.PORT);
+
+// It looks like mocha is running all test files in parallel
+// so it tries to run a server for each file on the same PORT.
+const server = app.listen(++process.env.PORT);
 
 chai.should();
 chai.use(chaiHttp);

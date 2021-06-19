@@ -14,16 +14,16 @@ const User = require('../api/models/User');
 const { signToken } = require('../api/utils/jwtUtils');
 require('dotenv').config();
 
-process.env.PORT = 5007;
 process.env.testing = true;
 
-const server = app.listen(process.env.PORT);
+const server = app.listen(++process.env.PORT);
 
 chai.should();
 chai.use(chaiHttp);
 
 let jwtToken = null;
-let form = null;
+let globalForm = null;
+let globalQuestion = null;
 
 async function clearAllCollections() {
 	console.log('clearing collections...');
@@ -48,11 +48,18 @@ async function populateDB() {
 	const user = await User.create({ email: 'test', password: 'test' });
 	jwtToken = await signToken({ id: user.id });
 
-	form = await Form.create({
+	globalForm = await Form.create({
 		name: 'test',
 		authorId: user.id,
 		questions: [],
 	});
+	globalQuestion = {
+		formId: globalForm.id,
+		question: 'test question',
+		answerType: 'radio',
+		answers: null,
+		index: 1,
+	};
 	console.log('DB populated!');
 }
 
@@ -94,137 +101,10 @@ describe('Questions API testing', () => {
 
 	after((done) => {
 		disconnectDB()
-			.then(() => done())
+			.then(() => {
+				done();
+			})
 			.catch((err) => done(err));
-	});
-
-	describe('POST /questions', () => {
-		beforeEach(async () => {
-			await Question.deleteMany({}).exec();
-		});
-
-		function getPoster() {
-			return chai
-				.request(server)
-				.post('/questions')
-				.set('Authorization', `Bearer ${jwtToken}`);
-		}
-
-		it('Should get status 201', async () => {
-			const response = await chai
-				.request(server)
-				.post('/questions')
-				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({
-					formId: form.id,
-					question: 'test question',
-					answerType: 'radio',
-					answers: null,
-				});
-			response.status.should.equal(201);
-		});
-
-		it('Should get status 401', async () => {
-			const response = await chai.request(server).post('/questions').send({
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			});
-			response.status.should.equal(401);
-		});
-
-		it('Should get status 400', async () => {
-			const question = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-
-			let invalidQuestion = getCopy(question);
-			delete invalidQuestion.formId;
-			let response = await getPoster().send(invalidQuestion);
-			response.status.should.equal(400);
-
-			invalidQuestion = getCopy(question);
-			delete invalidQuestion.answerType;
-			response = await getPoster().send(invalidQuestion);
-			response.status.should.equal(400);
-
-			invalidQuestion = getCopy(question);
-			delete invalidQuestion.question;
-			response = await getPoster().send(invalidQuestion);
-			response.status.should.equal(400);
-
-			invalidQuestion = getCopy(question);
-			delete invalidQuestion.answers;
-			response = await getPoster().send(invalidQuestion);
-			response.status.should.equal(201);
-
-			const questions = await Question.find({}).exec();
-			questions.should.be.an('array').and.have.lengthOf(1);
-		});
-
-		/*
-			Don't know why, but I cannot do smth like this
-
-			const sender = chai
-				.request(server)
-				.post('/questions')
-				.set('Authorization', `Bearer ${jwtToken}`)
-
-			const response = await sender.send(question); // 3 times in a row
-
-			It sends only once and it drives me insane!!!
-		*/
-		it('Should have 3 questions with indices [0, 1, 2]', async () => {
-			const question = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-
-			for (let i = 0; i < 3; ++i) {
-				question.question = `question #${i + 1}`;
-				// eslint-disable-next-line no-await-in-loop
-				const response = await getPoster().send(question);
-
-				response.status.should.equal(201);
-			}
-
-			const questions = await Question.find({}).sort({ index: 1 }).exec();
-			questions.should.have.lengthOf(3);
-			const questionsIndices = questions.map((q) => q.index);
-			questionsIndices.should.eql([0, 1, 2]);
-		});
-
-		it('Questions should go in given order', async () => {
-			const question = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-
-			question.question = '1';
-			let response = await getPoster().send(question);
-			response.status.should.equal(201);
-
-			question.question = '2';
-			response = await getPoster().send(question);
-
-			response.status.should.equal(201);
-			question.question = '3';
-			response = await getPoster().send({ ...question, index: 1 });
-			response.status.should.equal(201);
-
-			const questions = await Question.find({}).sort({ index: 1 }).exec();
-			questions.should.have.lengthOf(3);
-			const questionsIndices = questions.map((q) => q.question);
-			questionsIndices.should.eql(['1', '3', '2']);
-		});
 	});
 
 	describe('GET /questions', () => {
@@ -237,21 +117,21 @@ describe('Questions API testing', () => {
 				{
 					question: 'question 1',
 					answerType: 'radio',
-					formId: form.id,
+					formId: globalForm.id,
 					index: 1,
 					answers: [],
 				},
 				{
 					question: 'question 2',
 					answerType: 'checkbox',
-					formId: form.id,
+					formId: globalForm.id,
 					index: 3,
 					answers: [],
 				},
 				{
 					question: 'question 3',
 					answerType: 'radio',
-					formId: form.id,
+					formId: globalForm.id,
 					index: 2,
 					answers: [],
 				},
@@ -289,19 +169,119 @@ describe('Questions API testing', () => {
 		});
 	});
 
+	describe('POST /questions', () => {
+		beforeEach(async () => {
+			await Question.deleteMany({}).exec();
+		});
+
+		function getPoster() {
+			return chai
+				.request(server)
+				.post('/questions')
+				.set('Authorization', `Bearer ${jwtToken}`);
+		}
+
+		it('Should get status 201', async () => {
+			const response = await chai
+				.request(server)
+				.post('/questions')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send(globalQuestion);
+			response.status.should.equal(201);
+		});
+
+		it('Should get status 401', async () => {
+			const response = await chai
+				.request(server)
+				.post('/questions')
+				.send(globalQuestion);
+			response.status.should.equal(401);
+		});
+
+		it('Should get status 400', async () => {
+			let invalidQuestion = getCopy(globalQuestion);
+			delete invalidQuestion.formId;
+			let response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(400);
+
+			invalidQuestion = getCopy(globalQuestion);
+			delete invalidQuestion.answerType;
+			response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(400);
+
+			invalidQuestion = getCopy(globalQuestion);
+			delete invalidQuestion.question;
+			response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(400);
+
+			invalidQuestion = getCopy(globalQuestion);
+			delete invalidQuestion.answers;
+			response = await getPoster().send(invalidQuestion);
+			response.status.should.equal(201);
+
+			const questions = await Question.find({}).exec();
+			questions.should.be.an('array').and.have.lengthOf(1);
+		});
+
+		/*
+			Don't know why, but I cannot do smth like this
+
+			const sender = chai
+				.request(server)
+				.post('/questions')
+				.set('Authorization', `Bearer ${jwtToken}`)
+
+			const response = await sender.send(question); // 3 times in a row
+
+			It sends only once and it drives me insane!!!
+		*/
+		it('Should have 3 questions with indices [0, 1, 2]', async () => {
+			for (let i = 0; i < 3; ++i) {
+				const question = getCopy(globalQuestion);
+				delete question.index;
+				question.question = `question #${i + 1}`;
+				// eslint-disable-next-line no-await-in-loop
+				const response = await getPoster().send(question);
+
+				response.status.should.equal(201);
+			}
+
+			const questions = await Question.find({}).sort({ index: 1 }).exec();
+			questions.should.have.lengthOf(3);
+			const questionsIndices = questions.map((q) => q.index);
+			questionsIndices.should.eql([0, 1, 2]);
+		});
+
+		it('Questions should go in given order', async () => {
+			const question = getCopy(globalQuestion);
+			delete question.index;
+
+			question.question = '1';
+			let response = await getPoster().send(question);
+			response.status.should.equal(201);
+
+			question.question = '2';
+			response = await getPoster().send(question);
+
+			response.status.should.equal(201);
+			question.question = '3';
+			response = await getPoster().send({ ...question, index: 1 });
+			response.status.should.equal(201);
+
+			const questions = await Question.find({}).sort({ index: 1 }).exec();
+			questions.should.have.lengthOf(3);
+			const questionsIndices = questions.map((q) => q.question);
+			questionsIndices.should.eql(['1', '3', '2']);
+		});
+	});
+
 	describe('GET /questions/:id', () => {
 		before(async () => {
 			await clearCollections();
 		});
 
 		it('Should get one question', async () => {
-			const question = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-			const expectedQuestion = await Question.create(question);
+			const expectedQuestion = await Question.create(globalQuestion);
 
 			const response = await chai
 				.request(server)
@@ -330,13 +310,6 @@ describe('Questions API testing', () => {
 		});
 
 		it('Question should be updated', async () => {
-			const q = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-
 			const answer = {
 				answer: 'test answer',
 				isCorrect: true,
@@ -350,7 +323,7 @@ describe('Questions API testing', () => {
 				answers: [answer],
 			};
 
-			const question = await Question.create(q);
+			const question = await Question.create(globalQuestion);
 
 			Object.keys(questionUpdate).forEach((key) => {
 				question[key] = questionUpdate[key];
@@ -400,13 +373,6 @@ describe('Questions API testing', () => {
 			With transactions this test is invalid, so is pending for reference.
 		*/
 		it('Should add two first answers and get status 400', async () => {
-			const q = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-
 			const answers = [
 				{
 					answer: '1',
@@ -424,7 +390,7 @@ describe('Questions API testing', () => {
 				},
 			];
 
-			let question = await Question.create(q);
+			let question = await Question.create(globalQuestion);
 			let response = await chai
 				.request(server)
 				.put(`/questions/${question.id}`)
@@ -445,13 +411,6 @@ describe('Questions API testing', () => {
 
 	describe('DELETE /questions/:id', () => {
 		it('Should delete question and all its answers', async () => {
-			const q = {
-				formId: form.id,
-				question: 'test question',
-				answerType: 'radio',
-				answers: null,
-			};
-
 			const answers = [
 				{
 					answer: '1',
@@ -470,7 +429,7 @@ describe('Questions API testing', () => {
 				},
 			];
 
-			const question = await Question.create(q);
+			const question = await Question.create(globalQuestion);
 			await Answer.create(
 				answers.map((answer) => ({ ...answer, questionId: question.id }))
 			);

@@ -6,12 +6,12 @@ function getQuery(url) {
 	return queryString.decode(url.substr(queryStartIndex + 1));
 }
 
-function respondeWith500(ctx) {
+function respondWith500(ctx) {
 	ctx.status = 500;
 	ctx.body = { message: 'Internal server error!' };
 }
 
 module.exports = {
 	getQuery,
-	respondeWith500,
+	respondWith500,
 };
