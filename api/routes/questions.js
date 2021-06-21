@@ -111,6 +111,8 @@ module.exports = function (router, protectedRouter) {
 				}
 			}
 
+			let createdQuestionId = '';
+
 			session = await mongoose.startSession();
 			await session.withTransaction(async () => {
 				const createdQuestion = await Question.create(
@@ -124,6 +126,8 @@ module.exports = function (router, protectedRouter) {
 					],
 					{ session }
 				);
+
+				createdQuestionId = createdQuestionId.id;
 
 				if (!(answers instanceof Array)) {
 					return;
@@ -139,7 +143,7 @@ module.exports = function (router, protectedRouter) {
 			});
 
 			ctx.status = 201;
-			ctx.body = { message: 'ok', index };
+			ctx.body = { message: 'ok', index, questionId: createdQuestionId };
 		} catch (err) {
 			console.error(err.message);
 			if (err.name === 'ValidationError') {
@@ -202,6 +206,7 @@ module.exports = function (router, protectedRouter) {
 
 				nModified = result.nModified;
 
+				// maybe a bug because old answers aren't being deleted.
 				await Answer.create(
 					answers.map((answer) => ({ ...answer, questionId })),
 					{ session }
@@ -214,7 +219,7 @@ module.exports = function (router, protectedRouter) {
 			console.error(err.message);
 			if (err.name === 'ValidationError') {
 				ctx.status = 400;
-				ctx.body = { message: 'Invalid POST body!' };
+				ctx.body = { message: 'Invalid PUT body!' };
 			} else {
 				ctx.status = 500;
 				ctx.body = { message: 'Internal server error!' };
@@ -249,7 +254,7 @@ module.exports = function (router, protectedRouter) {
 					ctx.body = { deleted: result.deletedCount === 1 };
 				} else {
 					ctx.status = 403;
-					ctx.body = { message: 'Forbidden' };
+					ctx.body = { message: 'Forbidden!' };
 				}
 			}
 		} catch (err) {

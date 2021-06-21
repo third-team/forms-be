@@ -168,7 +168,7 @@ module.exports = function (router, protectedRouter) {
 			console.error(err.message);
 			if (err.name === 'ValidationError') {
 				ctx.status = 400;
-				ctx.body = { message: 'Invalid POST body!' };
+				ctx.body = { message: 'Invalid PUT body!' };
 				return;
 			}
 			respondWith500(ctx);
