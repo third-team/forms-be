@@ -115,7 +115,7 @@ module.exports = function (router, protectedRouter) {
 
 			session = await mongoose.startSession();
 			await session.withTransaction(async () => {
-				const createdQuestion = await Question.create(
+				const createdQuestions = await Question.create(
 					[
 						{
 							formId,
@@ -126,8 +126,8 @@ module.exports = function (router, protectedRouter) {
 					],
 					{ session }
 				);
-
-				createdQuestionId = createdQuestionId.id;
+				
+				createdQuestionId = createdQuestions[0].id;
 
 				if (!(answers instanceof Array)) {
 					return;
@@ -136,12 +136,12 @@ module.exports = function (router, protectedRouter) {
 				await Answer.create(
 					answers.map((answer) => ({
 						...answer,
-						questionId: createdQuestion.id,
+						questionId: createdQuestions.id,
 					})),
 					{ session }
 				);
 			});
-
+			
 			ctx.status = 201;
 			ctx.body = { message: 'ok', index, questionId: createdQuestionId };
 		} catch (err) {
