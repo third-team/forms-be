@@ -188,7 +188,7 @@ module.exports = function (router, protectedRouter) {
 				const formWithGivenIdBelongsToUser = await Form.exists({
 					_id: formId,
 					authorId: userId,
-				}).exec();
+				});
 				if (!formWithGivenIdBelongsToUser) {
 					ctx.status = 403;
 					ctx.body = { message: 'Forbidden!' };
