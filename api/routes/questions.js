@@ -206,6 +206,10 @@ module.exports = function (router, protectedRouter) {
 
 				nModified = result.nModified;
 
+				if (!(answers instanceof Array)) {
+					return;
+				}
+
 				// maybe a bug because old answers aren't being deleted.
 				await Answer.create(
 					answers.map((answer) => ({ ...answer, questionId })),
