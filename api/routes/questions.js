@@ -4,58 +4,62 @@ const Question = require('../models/Question');
 const Answer = require('../models/Answer');
 const objectIdRegExp = require('../utils/mongoDBObjectIdRegExp');
 const Form = require('../models/Form');
-const { getQuery } = require('../utils/httpUtils');
+// const { getQuery } = require('../utils/httpUtils');
 const { doesQuestionBelongToUser } = require('../utils/dbUtils');
 
 module.exports = function (router, protectedRouter) {
-	router.get('/questions', async (ctx) => {
-		const query = getQuery(ctx.request.url);
+	/*
+		disable GET methods because they expose isCorrect
 
-		const filter = {};
-		if (query.formId) {
-			filter.formId = query.formId;
-		}
+		router.get('/questions', async (ctx) => {
+			const query = getQuery(ctx.request.url);
 
-		try {
-			const questions = await Question.find(filter)
-				.populate('answers')
-				.sort({ index: 1 })
-				.exec();
-
-			ctx.status = 200;
-			ctx.body = {
-				questions: questions.map((question) =>
-					question.toJSON({ virtuals: true })
-				),
-			};
-		} catch (err) {
-			console.error(err.message);
-			ctx.status = 500;
-			ctx.body = { message: 'Invalid server error!' };
-		}
-	});
-
-	router.get(`/questions/:id${objectIdRegExp}`, async (ctx) => {
-		const questionId = ctx.params.id;
-
-		try {
-			const question = await Question.findOne({ _id: questionId })
-				.populate('answers')
-				.exec();
-
-			if (!question) {
-				ctx.status = 404;
-				ctx.body = { message: 'Question not found!' };
-			} else {
-				ctx.status = 200;
-				ctx.body = { question: question.toJSON({ virtuals: true }) };
+			const filter = {};
+			if (query.formId) {
+				filter.formId = query.formId;
 			}
-		} catch (err) {
-			console.error(err.message);
-			ctx.status = 500;
-			ctx.body = { message: 'Internal server error!' };
-		}
-	});
+
+			try {
+				const questions = await Question.find(filter)
+					.populate('answers')
+					.sort({ index: 1 })
+					.exec();
+
+				ctx.status = 200;
+				ctx.body = {
+					questions: questions.map((question) =>
+						question.toJSON({ virtuals: true })
+					),
+				};
+			} catch (err) {
+				console.error(err.message);
+				ctx.status = 500;
+				ctx.body = { message: 'Invalid server error!' };
+			}
+		});
+
+		router.get(`/questions/:id${objectIdRegExp}`, async (ctx) => {
+			const questionId = ctx.params.id;
+
+			try {
+				const question = await Question.findOne({ _id: questionId })
+					.populate('answers')
+					.exec();
+
+				if (!question) {
+					ctx.status = 404;
+					ctx.body = { message: 'Question not found!' };
+				} else {
+					ctx.status = 200;
+					ctx.body = { question: question.toJSON({ virtuals: true }) };
+				}
+			} catch (err) {
+				console.error(err.message);
+				ctx.status = 500;
+				ctx.body = { message: 'Internal server error!' };
+			}
+		});
+	*/
 
 	protectedRouter.post('/questions', async (ctx) => {
 		const userId = ctx.request.tokenPayload.id;
@@ -126,7 +130,7 @@ module.exports = function (router, protectedRouter) {
 					],
 					{ session }
 				);
-				
+
 				createdQuestionId = createdQuestions[0].id;
 
 				if (!(answers instanceof Array)) {
@@ -141,7 +145,7 @@ module.exports = function (router, protectedRouter) {
 					{ session }
 				);
 			});
-			
+
 			ctx.status = 201;
 			ctx.body = { message: 'ok', index, questionId: createdQuestionId };
 		} catch (err) {

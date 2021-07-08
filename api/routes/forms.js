@@ -29,6 +29,31 @@ const objectIdRegExp = require('../utils/mongoDBObjectIdRegExp');
 	}
 */
 
+async function getFormById(id) {
+	const form = await Form.findById(id);
+
+	if (!form) {
+		return form;
+	}
+
+	await form
+		.populate({
+			path: 'questions',
+			populate: {
+				path: 'answers',
+				options: {
+					sort: { index: 1 },
+				},
+			},
+			options: {
+				sort: { index: 1 },
+			},
+		})
+		.execPopulate();
+
+	return form;
+}
+
 function isFormValid({ authorId, name, questions }) {
 	if (!authorId || !name || questions === undefined || questions === null) {
 		return false;
@@ -105,7 +130,7 @@ module.exports = function (router, protectedRouter) {
 		const formId = ctx.params.id;
 
 		try {
-			const form = await Form.findById(formId);
+			const form = await getFormById(formId);
 
 			if (!form) {
 				ctx.status = 404;
@@ -113,24 +138,39 @@ module.exports = function (router, protectedRouter) {
 				return;
 			}
 
-			await form
-				.populate({
-					path: 'questions',
-					populate: {
-						path: 'answers',
-						options: {
-							sort: { index: 1 },
-						},
-					},
-					options: {
-						sort: { index: 1 },
-					},
-				})
-				.execPopulate();
+			form.questions.forEach((question) => {
+				question.answers.forEach((answer) => {
+					answer.isCorrect = undefined;
+				});
+			});
+
+			ctx.status = 200;
+			ctx.body = {
+				form: form.toJSON({ virtuals: true }),
+			};
+		} catch (err) {
+			console.error(err.message);
+			ctx.status = 500;
+			ctx.body = { message: 'Internal server error!' };
+		}
+	});
+
+	protectedRouter.get(`/forms/my/:id${objectIdRegExp}`, async (ctx) => {
+		const formId = ctx.params.id;
+		const userId = ctx.request.tokenPayload.id;
+
+		try {
+			const form = await getFormById(formId);
 
 			if (!form) {
 				ctx.status = 404;
-				ctx.body = { message: 'No such form!' };
+				ctx.body = { message: 'Form not found!' };
+				return;
+			}
+
+			if (form.authorId.toString() !== userId) {
+				ctx.status = 403;
+				ctx.body = { message: 'Forbidden!' };
 				return;
 			}
 

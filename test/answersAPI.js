@@ -97,87 +97,87 @@ describe('Answers API testing', () => {
 			.catch((err) => done(err));
 	});
 
-	describe('GET /answers', () => {
-		beforeEach(async () => {
-			await Answer.deleteMany({}).exec();
-		});
+	// describe('GET /answers', () => {
+	// 	beforeEach(async () => {
+	// 		await Answer.deleteMany({}).exec();
+	// 	});
 
-		it('should get all answers', async () => {
-			const createdAnswers = await Answer.create(mainAnswers);
+	// 	it('should get all answers', async () => {
+	// 		const createdAnswers = await Answer.create(mainAnswers);
 
-			const response = await chai.request(server).get('/answers');
-			response.status.should.be.equal(200);
-			const obtainedAnswers = response.body.answers;
-			chai.should().exist(obtainedAnswers);
-			obtainedAnswers.should.be.an('array');
-			obtainedAnswers.should.have.lengthOf(3);
+	// 		const response = await chai.request(server).get('/answers');
+	// 		response.status.should.be.equal(200);
+	// 		const obtainedAnswers = response.body.answers;
+	// 		chai.should().exist(obtainedAnswers);
+	// 		obtainedAnswers.should.be.an('array');
+	// 		obtainedAnswers.should.have.lengthOf(3);
 
-			obtainedAnswers.sort((a, b) => a.index - b.index);
-			obtainedAnswers.forEach((obtainedAnswer, obtainedAnswerIndex) => {
-				const createdAnswer = createdAnswers[obtainedAnswerIndex];
-				compareAnswers(obtainedAnswer, createdAnswer);
-			});
-		});
+	// 		obtainedAnswers.sort((a, b) => a.index - b.index);
+	// 		obtainedAnswers.forEach((obtainedAnswer, obtainedAnswerIndex) => {
+	// 			const createdAnswer = createdAnswers[obtainedAnswerIndex];
+	// 			compareAnswers(obtainedAnswer, createdAnswer);
+	// 		});
+	// 	});
 
-		it('should return only answers, which belong to specified question', async () => {
-			const { questionId } = mainAnswers[0];
-			const createdAnswers = await Answer.create([
-				mainAnswers[0],
-				{
-					...mainAnswers[1],
-					questionId,
-				},
-				mainAnswers[2],
-			]);
+	// 	it('should return only answers, which belong to specified question', async () => {
+	// 		const { questionId } = mainAnswers[0];
+	// 		const createdAnswers = await Answer.create([
+	// 			mainAnswers[0],
+	// 			{
+	// 				...mainAnswers[1],
+	// 				questionId,
+	// 			},
+	// 			mainAnswers[2],
+	// 		]);
 
-			const response = await chai
-				.request(server)
-				.get(`/answers?questionId=${questionId}`);
-			response.status.should.be.equal(200);
-			const obtainedAnswers = response.body.answers;
-			chai.should().exist(obtainedAnswers);
-			obtainedAnswers.should.be.an('array');
-			obtainedAnswers.should.have.lengthOf(2);
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/answers?questionId=${questionId}`);
+	// 		response.status.should.be.equal(200);
+	// 		const obtainedAnswers = response.body.answers;
+	// 		chai.should().exist(obtainedAnswers);
+	// 		obtainedAnswers.should.be.an('array');
+	// 		obtainedAnswers.should.have.lengthOf(2);
 
-			obtainedAnswers.sort((a, b) => a.index - b.index);
-			obtainedAnswers.forEach((obtainedAnswer, obtainedAnswerIndex) => {
-				const createdAnswer = createdAnswers[obtainedAnswerIndex];
-				compareAnswers(obtainedAnswer, createdAnswer);
-			});
-		});
+	// 		obtainedAnswers.sort((a, b) => a.index - b.index);
+	// 		obtainedAnswers.forEach((obtainedAnswer, obtainedAnswerIndex) => {
+	// 			const createdAnswer = createdAnswers[obtainedAnswerIndex];
+	// 			compareAnswers(obtainedAnswer, createdAnswer);
+	// 		});
+	// 	});
 
-		it('should get status 400', async () => {
-			const response = await chai
-				.request(server)
-				.get(`/answers?questionId=${'zzzzzzzzzzzzzzzzzzzzzzzz'}`);
+	// 	it('should get status 400', async () => {
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/answers?questionId=${'zzzzzzzzzzzzzzzzzzzzzzzz'}`);
 
-			response.status.should.be.be.equal(400);
-		});
-	});
+	// 		response.status.should.be.be.equal(400);
+	// 	});
+	// });
 
-	describe('GET /answers/:id', () => {
-		it('should get the answer with given id', async () => {
-			const createdAnswer = await Answer.create(mainAnswers[0]);
+	// describe('GET /answers/:id', () => {
+	// 	it('should get the answer with given id', async () => {
+	// 		const createdAnswer = await Answer.create(mainAnswers[0]);
 
-			const response = await chai
-				.request(server)
-				.get(`/answers/${createdAnswer._id}`);
-			response.status.should.be.equal(200);
-			const obtainedAnswer = response.body.answer;
-			chai.should().exist(obtainedAnswer);
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/answers/${createdAnswer._id}`);
+	// 		response.status.should.be.equal(200);
+	// 		const obtainedAnswer = response.body.answer;
+	// 		chai.should().exist(obtainedAnswer);
 
-			compareAnswers(obtainedAnswer, createdAnswer);
-		});
+	// 		compareAnswers(obtainedAnswer, createdAnswer);
+	// 	});
 
-		it('should get status 400', async () => {
-			await Answer.create(mainAnswers[0]);
+	// 	it('should get status 400', async () => {
+	// 		await Answer.create(mainAnswers[0]);
 
-			const response = await chai
-				.request(server)
-				.get(`/answers/${'zzzzzzzzzzzzzzzzzzzzzzzz'}`);
-			response.status.should.be.equal(400);
-		});
-	});
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/answers/${'zzzzzzzzzzzzzzzzzzzzzzzz'}`);
+	// 		response.status.should.be.equal(400);
+	// 	});
+	// });
 
 	describe('POST /answers', () => {
 		it('should successfully post answer', async () => {

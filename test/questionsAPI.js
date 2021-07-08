@@ -2,7 +2,7 @@
 /* eslint-disable no-undef */
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const { ObjectId } = require('mongoose').Types.ObjectId;
+// const { ObjectId } = require('mongoose').Types.ObjectId;
 // const server = require('../server');
 const { connectDB } = require('../mongoDBConnect');
 const app = require('../app');
@@ -82,15 +82,15 @@ function getQuestionObject(question) {
 	};
 }
 
-function getAnswerObject(answer) {
-	return {
-		_id: answer._id.toString(),
-		answer: answer.answer,
-		questionId: answer.questionId.toString(),
-		isCorrect: answer.isCorrect,
-		index: answer.index,
-	};
-}
+// function getAnswerObject(answer) {
+// 	return {
+// 		_id: answer._id.toString(),
+// 		answer: answer.answer,
+// 		questionId: answer.questionId.toString(),
+// 		isCorrect: answer.isCorrect,
+// 		index: answer.index,
+// 	};
+// }
 
 describe('Questions API testing', () => {
 	before(async () => {
@@ -107,67 +107,96 @@ describe('Questions API testing', () => {
 			.catch((err) => done(err));
 	});
 
-	describe('GET /questions', () => {
-		before(async () => {
-			await clearCollections();
-		});
+	// describe('GET /questions', () => {
+	// 	before(async () => {
+	// 		await clearCollections();
+	// 	});
 
-		it('Should GET all questions', async () => {
-			const questions = await Question.insertMany([
-				{
-					question: 'question 1',
-					answerType: 'radio',
-					formId: globalForm.id,
-					index: 1,
-					answers: [],
-				},
-				{
-					question: 'question 2',
-					answerType: 'checkbox',
-					formId: globalForm.id,
-					index: 3,
-					answers: [],
-				},
-				{
-					question: 'question 3',
-					answerType: 'radio',
-					formId: globalForm.id,
-					index: 2,
-					answers: [],
-				},
-			]);
+	// 	it('Should GET all questions', async () => {
+	// 		const questions = await Question.insertMany([
+	// 			{
+	// 				question: 'question 1',
+	// 				answerType: 'radio',
+	// 				formId: globalForm.id,
+	// 				index: 1,
+	// 				answers: [],
+	// 			},
+	// 			{
+	// 				question: 'question 2',
+	// 				answerType: 'checkbox',
+	// 				formId: globalForm.id,
+	// 				index: 3,
+	// 				answers: [],
+	// 			},
+	// 			{
+	// 				question: 'question 3',
+	// 				answerType: 'radio',
+	// 				formId: globalForm.id,
+	// 				index: 2,
+	// 				answers: [],
+	// 			},
+	// 		]);
 
-			const answer = await Answer.create({
-				questionId: questions[0].id,
-				answer: 'answer 1',
-				index: 1,
-				isCorrect: true,
-			});
+	// 		const answer = await Answer.create({
+	// 			questionId: questions[0].id,
+	// 			answer: 'answer 1',
+	// 			index: 1,
+	// 			isCorrect: true,
+	// 		});
 
-			const response = await chai.request(server).get('/questions').send();
-			response.status.should.equal(200);
+	// 		const response = await chai.request(server).get('/questions').send();
+	// 		response.status.should.equal(200);
 
-			const responseQuestions = response.body.questions;
+	// 		const responseQuestions = response.body.questions;
 
-			questions.sort((a, b) => a.index - b.index);
+	// 		questions.sort((a, b) => a.index - b.index);
 
-			for (let i = 0; i < responseQuestions.length; ++i) {
-				const question = questions[i];
-				const gotQuestion = responseQuestions[i];
+	// 		for (let i = 0; i < responseQuestions.length; ++i) {
+	// 			const question = questions[i];
+	// 			const gotQuestion = responseQuestions[i];
 
-				getQuestionObject(question).should.be.eql(
-					getQuestionObject(gotQuestion)
-				);
-			}
+	// 			getQuestionObject(question).should.be.eql(
+	// 				getQuestionObject(gotQuestion)
+	// 			);
+	// 		}
 
-			const questionAnswers = responseQuestions.find(
-				(q) => q.index === 1
-			).answers;
-			questionAnswers.should.be.an('array').and.have.lengthOf(1);
-			const questionAnswer = questionAnswers[0];
-			getAnswerObject(answer).should.be.eql(getAnswerObject(questionAnswer));
-		});
-	});
+	// 		const questionAnswers = responseQuestions.find(
+	// 			(q) => q.index === 1
+	// 		).answers;
+	// 		questionAnswers.should.be.an('array').and.have.lengthOf(1);
+	// 		const questionAnswer = questionAnswers[0];
+	// 		getAnswerObject(answer).should.be.eql(getAnswerObject(questionAnswer));
+	// 	});
+	// });
+
+	// describe('GET /questions/:id', () => {
+	// 	before(async () => {
+	// 		await clearCollections();
+	// 	});
+
+	// 	it('Should get one question', async () => {
+	// 		const expectedQuestion = await Question.create(globalQuestion);
+
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/questions/${expectedQuestion.id}`);
+
+	// 		response.status.should.equal(200);
+
+	// 		const actualQuestion = response.body.question;
+
+	// 		getQuestionObject(actualQuestion).should.be.eql(
+	// 			getQuestionObject(expectedQuestion)
+	// 		);
+	// 	});
+
+	// 	it('Should get response 404', async () => {
+	// 		const response = await chai
+	// 			.request(server)
+	// 			.get(`/questions/${new ObjectId().toString()}`);
+	// 		response.status.should.equal(404);
+	// 	});
+	// });
 
 	describe('POST /questions', () => {
 		beforeEach(async () => {
@@ -272,35 +301,6 @@ describe('Questions API testing', () => {
 			questions.should.have.lengthOf(3);
 			const questionsIndices = questions.map((q) => q.question);
 			questionsIndices.should.eql(['1', '3', '2']);
-		});
-	});
-
-	describe('GET /questions/:id', () => {
-		before(async () => {
-			await clearCollections();
-		});
-
-		it('Should get one question', async () => {
-			const expectedQuestion = await Question.create(globalQuestion);
-
-			const response = await chai
-				.request(server)
-				.get(`/questions/${expectedQuestion.id}`);
-
-			response.status.should.equal(200);
-
-			const actualQuestion = response.body.question;
-
-			getQuestionObject(actualQuestion).should.be.eql(
-				getQuestionObject(expectedQuestion)
-			);
-		});
-
-		it('Should get response 404', async () => {
-			const response = await chai
-				.request(server)
-				.get(`/questions/${new ObjectId().toString()}`);
-			response.status.should.equal(404);
 		});
 	});
 

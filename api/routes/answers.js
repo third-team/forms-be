@@ -1,55 +1,59 @@
 /* eslint-disable object-curly-newline */
 const Answer = require('../models/Answer');
-const { getQuery, respondWith500 } = require('../utils/httpUtils');
-const objectIdRegExpString = require('../utils/mongoDBObjectIdRegExp');
+const { /* getQuery, */ respondWith500 } = require('../utils/httpUtils');
+// const objectIdRegExpString = require('../utils/mongoDBObjectIdRegExp');
 const { doesQuestionBelongToUser } = require('../utils/dbUtils');
 
 module.exports = function (router, protectedRouter) {
-	const objectIdRegExp = new RegExp(objectIdRegExpString);
+	// const objectIdRegExp = new RegExp(objectIdRegExpString);
 
-	router.get('/answers', async (ctx) => {
-		const query = getQuery(ctx.request.url);
+	/*
+		disable GET methods because they expose isCorrect
 
-		const filter = {};
-		if (query.questionId) {
-			if (!objectIdRegExp.test(query.questionId)) {
+		router.get('/answers', async (ctx) => {
+			const query = getQuery(ctx.request.url);
+
+			const filter = {};
+			if (query.questionId) {
+				if (!objectIdRegExp.test(query.questionId)) {
+					ctx.status = 400;
+					ctx.body = { message: 'Invalid parameter: questionId!' };
+					return;
+				}
+				filter.questionId = query.questionId;
+			}
+
+			try {
+				const answers = await Answer.find(filter).exec();
+
+				ctx.status = 200;
+				ctx.body = { answers };
+			} catch (err) {
+				console.error(err.message);
+				respondWith500(ctx);
+			}
+		});
+
+		router.get('/answers/:id', async (ctx) => {
+			const answerId = ctx.params.id;
+
+			if (!objectIdRegExp.test(answerId)) {
 				ctx.status = 400;
-				ctx.body = { message: 'Invalid parameter: questionId!' };
+				ctx.body = { message: 'Invalid parameter: id' };
 				return;
 			}
-			filter.questionId = query.questionId;
-		}
 
-		try {
-			const answers = await Answer.find(filter).exec();
+			try {
+				const answer = await Answer.findById(answerId).exec();
 
-			ctx.status = 200;
-			ctx.body = { answers };
-		} catch (err) {
-			console.error(err.message);
-			respondWith500(ctx);
-		}
-	});
-
-	router.get('/answers/:id', async (ctx) => {
-		const answerId = ctx.params.id;
-
-		if (!objectIdRegExp.test(answerId)) {
-			ctx.status = 400;
-			ctx.body = { message: 'Invalid parameter: id' };
-			return;
-		}
-
-		try {
-			const answer = await Answer.findById(answerId).exec();
-
-			ctx.status = 200;
-			ctx.body = { answer };
-		} catch (err) {
-			console.error(err.message);
-			respondWith500(ctx);
-		}
-	});
+				ctx.status = 200;
+				ctx.body = { answer };
+			} catch (err) {
+				console.error(err.message);
+				respondWith500(ctx);
+			}
+		});
+	*/
 
 	// maybe should use transaction.
 	protectedRouter.post('/answers', async (ctx) => {

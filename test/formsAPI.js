@@ -177,7 +177,8 @@ describe('Forms API testing', () => {
 						'answer',
 						mainFormQuestionAnswer.answer
 					);
-					obtainedAnswer.should.have.property(
+					// updated to 'should.not.have'
+					obtainedAnswer.should.not.have.property(
 						'isCorrect',
 						mainFormQuestionAnswer.isCorrect
 					);
