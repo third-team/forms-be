@@ -1,5 +1,6 @@
 /* eslint-disable object-curly-newline */
 const Answer = require('../models/Answer');
+const Question = require('../models/Question');
 const { /* getQuery, */ respondWith500 } = require('../utils/httpUtils');
 // const objectIdRegExpString = require('../utils/mongoDBObjectIdRegExp');
 const { doesQuestionBelongToUser } = require('../utils/dbUtils');
@@ -142,6 +143,18 @@ module.exports = function (router, protectedRouter) {
 					ctx.body = { message: 'Forbidden!' };
 					return;
 				}
+			}
+
+			const questionById = await Question.findById(
+				answerById.questionId
+			).exec();
+
+			// set isCorrect to false for all the other answers
+			if (isCorrect && questionById.answerType === 'radio') {
+				await Answer.updateMany(
+					{ questionId: answerById.questionId },
+					{ $set: { isCorrect: false } }
+				).exec();
 			}
 
 			// check whether the index is taken.

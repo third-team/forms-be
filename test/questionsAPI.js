@@ -407,6 +407,51 @@ describe('Questions API testing', () => {
 			question.question.should.be.equal('test question');
 			question.answers.should.be.eql([]);
 		});
+
+		// eslint-disable-next-line max-len
+		it('should set isCorrect to false for all answers on answerType property change', async () => {
+			const answers = [
+				{
+					answer: '1',
+					isCorrect: true,
+					index: 3,
+				},
+				{
+					answer: '2',
+					isCorrect: true,
+					index: 4,
+				},
+				{
+					answer: '3',
+					index: 5,
+					isCorrect: true,
+				},
+			];
+
+			let question = await Question.create(globalQuestion);
+			await Promise.all(
+				answers.map((answer) =>
+					Answer.create({ ...answer, questionId: question.id })
+				)
+			);
+
+			const response = await chai
+				.request(server)
+				.put(`/questions/${question.id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					question: 'test',
+					answerType: 'radio',
+				});
+			response.status.should.be.equal(200);
+
+			question = await Question.findById(question.id)
+				.populate('answers')
+				.exec();
+			question.answers.forEach((answer) => {
+				answer.isCorrect.should.be.false;
+			});
+		});
 	});
 
 	describe('DELETE /questions/:id', () => {

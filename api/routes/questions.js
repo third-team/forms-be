@@ -202,6 +202,15 @@ module.exports = function (router, protectedRouter) {
 
 			session = await mongoose.startSession();
 			await session.withTransaction(async () => {
+				// set isCorrect to false if answerType is defined
+				if (answerType) {
+					await Answer.updateMany(
+						{ questionId },
+						{ $set: { isCorrect: false } },
+						{ session }
+					);
+				}
+
 				const result = await Question.updateOne(
 					{ _id: questionId },
 					{ $set: { formId, question, answerType, index } },

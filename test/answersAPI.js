@@ -323,6 +323,60 @@ describe('Answers API testing', () => {
 
 			response.status.should.be.equal(403);
 		});
+
+		// eslint-disable-next-line max-len
+		it('should set isCorrect to false for all the other answers if isCorrect property changes to true', async () => {
+			const answers = [
+				{
+					answer: '1',
+					isCorrect: false,
+					index: 3,
+				},
+				{
+					answer: '2',
+					isCorrect: false,
+					index: 4,
+				},
+				{
+					answer: '3',
+					index: 5,
+					isCorrect: true,
+				},
+			];
+
+			const question = await Question.create({
+				formId: globalForm.id,
+				question: 'test?',
+				index: 1,
+				answers: [],
+				answerType: 'radio',
+			});
+			const createdAnswers = await Promise.all(
+				answers.map((answer) =>
+					Answer.create({ ...answer, questionId: question.id })
+				)
+			);
+			const response = await chai
+				.request(server)
+				.put(`/answers/${createdAnswers[0].id}`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({
+					isCorrect: true,
+				});
+			response.status.should.be.equal(200);
+
+			const updatedAnswers = await Answer.find({
+				questionId: question.id,
+			}).exec();
+
+			updatedAnswers.sort((a, b) => a.index - b.index);
+			console.log(updatedAnswers);
+
+			const answersCorrect = [true, false, false];
+			updatedAnswers.forEach((updatedAnswer, answerIndex) => {
+				updatedAnswer.isCorrect.should.be.equal(answersCorrect[answerIndex]);
+			});
+		});
 	});
 
 	describe('DELETE /answers/:id', () => {
