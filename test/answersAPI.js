@@ -370,7 +370,6 @@ describe('Answers API testing', () => {
 			}).exec();
 
 			updatedAnswers.sort((a, b) => a.index - b.index);
-			console.log(updatedAnswers);
 
 			const answersCorrect = [true, false, false];
 			updatedAnswers.forEach((updatedAnswer, answerIndex) => {

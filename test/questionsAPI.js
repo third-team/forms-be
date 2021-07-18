@@ -338,10 +338,12 @@ describe('Questions API testing', () => {
 			response.status.should.be.equal(200);
 			response.body.updated.should.be.true;
 
-			response = await chai.request(server).get(`/questions/${question.id}`);
+			// response = await chai.request(server).get(`/questions/${question.id}`);
+			response = await Question.findOne({ _id: question.id })
+				.populate('answers')
+				.exec();
 
-			response.status.should.be.equal(200);
-			const updatedQuestion = response.body.question;
+			const updatedQuestion = response.toJSON({ virtuals: true });
 			updatedQuestion.should.not.be.undefined;
 			getQuestionObject(updatedQuestion).should.be.eql(
 				getQuestionObject(question)
@@ -401,9 +403,12 @@ describe('Questions API testing', () => {
 				});
 			response.status.should.be.equal(400);
 
-			response = await chai.request(server).get(`/questions/${question.id}`);
-			response.status.should.be.equal(200);
-			question = response.body.question;
+			// response = await chai.request(server).get(`/questions/${question.id}`);
+			response = await Question.findOne({ _id: question.id })
+				.populate('answers')
+				.exec();
+
+			question = response.toJSON({ virtuals: true });
 			question.question.should.be.equal('test question');
 			question.answers.should.be.eql([]);
 		});
